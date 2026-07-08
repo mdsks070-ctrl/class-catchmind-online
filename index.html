@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>스마트 드로잉 놀이터</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --paper: #ffffff;
+      --ink: #17191f;
+      --muted: #606977;
+      --line: #d9dee7;
+      --soft: #eef2f6;
+      --blue: #2d6cdf;
+      --green: #0a9b73;
+      --pink: #d94275;
+      --amber: #d89018;
+      --violet: #6c55d9;
+      --shadow: 0 18px 42px rgba(23, 25, 31, .10);
+      color-scheme: light;
+      font-family: "Segoe UI", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(90deg, rgba(45, 108, 223, .09), transparent 28%),
+        linear-gradient(180deg, rgba(10, 155, 115, .08), transparent 34%),
+        var(--bg);
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 236px minmax(420px, 1fr) 304px;
+      gap: 14px;
+      height: 100vh;
+      padding: 14px;
+    }
+
+    .rail,
+    .panel {
+      background: rgba(255, 255, 255, .88);
+      border: 1px solid rgba(217, 222, 231, .95);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .rail {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, var(--blue), var(--green) 52%, var(--amber));
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .brand p,
+    .section-title span,
+    .stat-label,
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+    }
+
+    .rail-block,
+    .panel-block {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .rail-block:last-child,
+    .panel-block:last-child {
+      border-bottom: 0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .section-title strong {
+      font-size: 13px;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tool-btn,
+    .mode-btn,
+    .action-btn,
+    .stamp-btn {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      transition: transform .12s ease, border-color .12s ease, background .12s ease, color .12s ease;
+      user-select: none;
+    }
+
+    .tool-btn {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      padding: 8px;
+      text-align: left;
+    }
+
+    .tool-btn:active,
+    .mode-btn:active,
+    .action-btn:active,
+    .stamp-btn:active {
+      transform: translateY(1px);
+    }
+
+    .tool-btn.active,
+    .mode-btn.active {
+      border-color: rgba(45, 108, 223, .65);
+      background: rgba(45, 108, 223, .10);
+      color: #174aa6;
+    }
+
+    .tool-icon {
+      display: grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--soft);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .tool-btn span:last-child,
+    .stamp-btn {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+
+    .swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 2px solid #fff;
+      border-radius: 8px;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .20), 0 0 0 1px var(--line);
+    }
+
+    .swatch.active {
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25), 0 0 0 3px rgba(45, 108, 223, .28);
+    }
+
+    .range-row {
+      display: grid;
+      grid-template-columns: 1fr 42px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .size-readout {
+      display: grid;
+      min-height: 32px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+      min-height: 0;
+      gap: 12px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 58px;
+      padding: 10px;
+      background: rgba(255, 255, 255, .9);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .mission {
+      min-width: 0;
+    }
+
+    .mission span,
+    .timer span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .mission strong {
+      display: block;
+      margin-top: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 18px;
+      line-height: 1.15;
+    }
+
+    .score-meter {
+      display: grid;
+      min-width: 132px;
+      gap: 5px;
+    }
+
+    .score-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .meter {
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e9f0;
+    }
+
+    .meter-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--pink), var(--amber), var(--green));
+      transition: width .22s ease;
+    }
+
+    .timer {
+      display: grid;
+      min-width: 72px;
+      min-height: 40px;
+      place-items: center;
+      border-left: 1px solid var(--line);
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    .canvas-shell {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid #cfd6e1;
+      border-radius: 8px;
+      background:
+        linear-gradient(45deg, #f0f3f6 25%, transparent 25%),
+        linear-gradient(-45deg, #f0f3f6 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f0f3f6 75%),
+        linear-gradient(-45deg, transparent 75%, #f0f3f6 75%);
+      background-color: #fff;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      background-size: 20px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: crosshair;
+      background: #fff;
+    }
+
+    .floating-guess {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      max-width: min(300px, calc(100% - 28px));
+      padding: 10px 12px;
+      border: 1px solid rgba(217, 222, 231, .9);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .92);
+      color: var(--ink);
+      box-shadow: 0 10px 28px rgba(23, 25, 31, .12);
+      pointer-events: none;
+    }
+
+    .floating-guess strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .floating-guess span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .quickbar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .action-btn {
+      display: inline-grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 10px;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .action-btn.primary {
+      border-color: rgba(10, 155, 115, .45);
+      background: rgba(10, 155, 115, .12);
+      color: #08785b;
+      font-weight: 800;
+    }
+
+    .action-btn.danger {
+      border-color: rgba(217, 66, 117, .38);
+      color: #a72b54;
+    }
+
+    .action-icon {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 6px;
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .action-btn span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .panel {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .mode-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .mode-btn {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 9px;
+      text-align: left;
+    }
+
+    .mode-btn strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .mode-btn span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .mode-dot {
+      display: block;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: var(--blue);
+    }
+
+    .mode-btn[data-mode="mirror"] .mode-dot {
+      background: linear-gradient(90deg, var(--pink) 0 48%, var(--blue) 52% 100%);
+    }
+
+    .mode-btn[data-mode="mandala"] .mode-dot {
+      background: conic-gradient(var(--green), var(--amber), var(--pink), var(--blue), var(--green));
+    }
+
+    .mode-btn[data-mode="tidy"] .mode-dot {
+      background: linear-gradient(135deg, var(--violet), var(--green));
+    }
+
+    .smart-box {
+      display: grid;
+      gap: 10px;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+    }
+
+    .stat-value {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hint {
+      min-height: 48px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f7f9fb;
+      color: #354052;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .stamp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stamp-btn {
+      display: grid;
+      min-height: 42px;
+      place-items: center;
+      padding: 6px;
+      background: #fff;
+      font-weight: 700;
+    }
+
+    .palette-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      margin-top: 8px;
+    }
+
+    .palette-strip i {
+      display: block;
+    }
+
+    @media (max-width: 1120px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .workspace {
+        min-height: 690px;
+      }
+
+      .panel {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        overflow: visible;
+      }
+
+      .panel-block {
+        border-bottom: 0;
+        border-right: 1px solid var(--line);
+      }
+
+      .panel-block:last-child {
+        border-right: 0;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      .workspace {
+        min-height: 560px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .timer {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        padding-top: 8px;
+      }
+
+      .quickbar {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .panel {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-block {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="rail" aria-label="드로잉 도구">
+      <div class="brand">
+        <div class="mark">SD</div>
+        <div>
+          <h1>스마트 드로잉</h1>
+          <p>그리면 바로 반응하는 미술 놀이터</p>
+        </div>
+      </div>
+
+      <section class="rail-block">
+        <div class="section-title">
+          <strong>브러시</strong>
+          <span id="activeToolName">펜</span>
+        </div>
+        <div class="tool-grid">
+          <button class="tool-btn active" data-tool="pen" title="펜">
+            <span class="tool-icon">P</span><span>펜</span>
+          </button>
+          <button class="tool-btn" data-tool="marker" title="마커">
+            <span class="tool-icon">M</span><span>마커</span>
+          </button>
+          <button class="tool-btn" data-tool="neon" title="네온">
+            <span class="tool-icon">N</span><span>네온</span>
+          </button>
+          <button class="tool-btn" data-tool="spark" title="스파클">
+            <span class="tool-icon">S</span><span>스파클</span>
+          </button>
+          <button class="tool-btn" data-tool="eraser" title="지우개">
+            <span class="tool-icon">E</span><span>지우개</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="rail-block">
+        <div class="section-title">
+          <strong>색</strong>
+          <span id="activeColorName">먹색</span>
+        </div>
+        <div class="color-grid" id="colorGrid"></div>
+        <div class="palette-strip" aria-hidden="true">
+          <i style="background:#17191f"></i>
+          <i style="background:#2d6cdf"></i>
+          <i style="background:#0a9b73"></i>
+          <i style="background:#d94275"></i>
+          <i style="background:#d89018"></i>
+        </div>
+      </section>
+
+      <section class="rail-block">
+        <div class="section-title">
+          <strong>굵기</strong>
+          <span>브러시 크기</span>
+        </div>
+        <div class="range-row">
+          <input id="sizeRange" type="range" min="2" max="44" value="10">
+          <output class="size-readout" id="sizeReadout">10</output>
+        </div>
+      </section>
+    </aside>
+
+    <section class="workspace" aria-label="스마트 드로잉 캔버스">
+      <div class="topbar">
+        <div class="mission">
+          <span>오늘의 미션</span>
+          <strong id="missionName">햇살이 있는 해</strong>
+        </div>
+        <div class="score-meter">
+          <div class="score-label">
+            <span>스마트 점수</span>
+            <strong id="scoreText">0</strong>
+          </div>
+          <div class="meter"><div class="meter-fill" id="scoreFill"></div></div>
+        </div>
+        <div class="timer">
+          <span>남은 시간</span>
+          <strong id="timerText">45</strong>
+        </div>
+      </div>
+
+      <div class="canvas-shell" id="canvasShell">
+        <canvas id="drawingCanvas" width="1200" height="850" aria-label="그림을 그리는 영역"></canvas>
+        <div class="floating-guess">
+          <strong id="floatingGuess">첫 선을 기다리는 중</strong>
+          <span id="floatingHint">곡선, 직선, 닫힌 모양을 보면 미션 점수가 움직입니다.</span>
+        </div>
+      </div>
+
+      <div class="quickbar">
+        <button class="action-btn primary" id="startBtn" title="도전 시작">
+          <span class="action-icon">▶</span><span>시작</span>
+        </button>
+        <button class="action-btn" id="missionBtn" title="새 미션">
+          <span class="action-icon">↻</span><span>새 미션</span>
+        </button>
+        <button class="action-btn" id="undoBtn" title="되돌리기">
+          <span class="action-icon">↶</span><span>되돌리기</span>
+        </button>
+        <button class="action-btn danger" id="clearBtn" title="모두 지우기">
+          <span class="action-icon">×</span><span>지우기</span>
+        </button>
+        <button class="action-btn" id="saveBtn" title="PNG 저장">
+          <span class="action-icon">↓</span><span>저장</span>
+        </button>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="스마트 설정">
+      <section class="panel-block">
+        <div class="section-title">
+          <strong>스마트 모드</strong>
+          <span id="activeModeName">자유</span>
+        </div>
+        <div class="mode-list">
+          <button class="mode-btn active" data-mode="free" title="자유 모드">
+            <span class="mode-dot"></span>
+            <span><strong>자유</strong><span>손맛 그대로</span></span>
+          </button>
+          <button class="mode-btn" data-mode="mirror" title="좌우 대칭">
+            <span class="mode-dot"></span>
+            <span><strong>미러</strong><span>반대편도 함께</span></span>
+          </button>
+          <button class="mode-btn" data-mode="mandala" title="만다라">
+            <span class="mode-dot"></span>
+            <span><strong>만다라</strong><span>회전 반복</span></span>
+          </button>
+          <button class="mode-btn" data-mode="tidy" title="도형 보정">
+            <span class="mode-dot"></span>
+            <span><strong>보정</strong><span>원과 선을 정리</span></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel-block">
+        <div class="section-title">
+          <strong>스마트 눈</strong>
+          <span id="confidenceText">0%</span>
+        </div>
+        <div class="smart-box">
+          <div class="stat-row">
+            <span class="stat-label">추측</span>
+            <span class="stat-value" id="guessText">아직 몰라요</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">선 느낌</span>
+            <span class="stat-value" id="strokeMood">대기 중</span>
+          </div>
+          <div class="hint" id="smartHint">미션을 시작하거나 캔버스에 선을 그려보세요.</div>
+        </div>
+      </section>
+
+      <section class="panel-block">
+        <div class="section-title">
+          <strong>스마트 완성</strong>
+          <span>스탬프</span>
+        </div>
+        <div class="stamp-grid">
+          <button class="stamp-btn" data-stamp="sun">해</button>
+          <button class="stamp-btn" data-stamp="flower">꽃</button>
+          <button class="stamp-btn" data-stamp="tree">나무</button>
+          <button class="stamp-btn" data-stamp="house">집</button>
+          <button class="stamp-btn" data-stamp="fish">물고기</button>
+          <button class="stamp-btn" data-stamp="cat">고양이</button>
+        </div>
+        <p class="small-note">현재 색을 바탕으로 캔버스 중앙에 들어갑니다.</p>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#drawingCanvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const colorGrid = document.querySelector("#colorGrid");
+    const sizeRange = document.querySelector("#sizeRange");
+    const sizeReadout = document.querySelector("#sizeReadout");
+    const scoreText = document.querySelector("#scoreText");
+    const scoreFill = document.querySelector("#scoreFill");
+    const timerText = document.querySelector("#timerText");
+    const missionName = document.querySelector("#missionName");
+    const floatingGuess = document.querySelector("#floatingGuess");
+    const floatingHint = document.querySelector("#floatingHint");
+    const guessText = document.querySelector("#guessText");
+    const strokeMood = document.querySelector("#strokeMood");
+    const smartHint = document.querySelector("#smartHint");
+    const confidenceText = document.querySelector("#confidenceText");
+    const activeToolName = document.querySelector("#activeToolName");
+    const activeModeName = document.querySelector("#activeModeName");
+    const activeColorName = document.querySelector("#activeColorName");
+
+    const palette = [
+      { name: "먹색", value: "#17191f" },
+      { name: "파랑", value: "#2d6cdf" },
+      { name: "초록", value: "#0a9b73" },
+      { name: "분홍", value: "#d94275" },
+      { name: "노랑", value: "#d89018" },
+      { name: "보라", value: "#6c55d9" },
+      { name: "하늘", value: "#21a6c7" },
+      { name: "잎색", value: "#47a447" },
+      { name: "주황", value: "#f06f32" },
+      { name: "자주", value: "#9f3f8f" },
+      { name: "회색", value: "#596273" },
+      { name: "흰색", value: "#ffffff" }
+    ];
+
+    const missions = [
+      { name: "햇살이 있는 해", target: "sun" },
+      { name: "작은 정원이 있는 집", target: "house" },
+      { name: "춤추는 꽃 한 송이", target: "flower" },
+      { name: "구름 아래 나무", target: "tree" },
+      { name: "꼬리가 큰 물고기", target: "fish" },
+      { name: "동그란 얼굴 고양이", target: "cat" },
+      { name: "미래에서 온 로봇", target: "robot" },
+      { name: "비 오는 날 우산", target: "umbrella" }
+    ];
+
+    const state = {
+      tool: "pen",
+      mode: "free",
+      color: palette[0].value,
+      colorName: palette[0].name,
+      size: 10,
+      drawing: false,
+      points: [],
+      strokeStats: [],
+      undoStack: [],
+      timer: 45,
+      interval: null,
+      mission: missions[0],
+      beforeStroke: null,
+      score: 0
+    };
+
+    function setupCanvas() {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawTinySignature();
+    }
+
+    function drawTinySignature() {
+      ctx.save();
+      ctx.globalAlpha = .18;
+      ctx.fillStyle = "#606977";
+      ctx.font = "16px Segoe UI, sans-serif";
+      ctx.fillText("Smart Drawing", 28, canvas.height - 28);
+      ctx.restore();
+    }
+
+    function saveUndo() {
+      state.undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      if (state.undoStack.length > 18) state.undoStack.shift();
+    }
+
+    function clearCanvas(record = true) {
+      if (record) saveUndo();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      drawTinySignature();
+      state.strokeStats = [];
+      updateSmartPanel();
+    }
+
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height
+      };
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function rotatePoint(point, center, angle) {
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      return {
+        x: center.x + dx * cos - dy * sin,
+        y: center.y + dx * sin + dy * cos
+      };
+    }
+
+    function mirrored(point) {
+      return { x: canvas.width - point.x, y: point.y };
+    }
+
+    function configureBrush() {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = state.tool === "eraser" ? "destination-out" : "source-over";
+      ctx.strokeStyle = state.color;
+      ctx.fillStyle = state.color;
+      ctx.lineWidth = state.tool === "marker" ? state.size * 2.2 : state.size;
+      ctx.globalAlpha = state.tool === "marker" ? .20 : 1;
+      ctx.shadowColor = state.tool === "neon" ? state.color : "transparent";
+      ctx.shadowBlur = state.tool === "neon" ? state.size * 1.4 : 0;
+    }
+
+    function resetBrush() {
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = "transparent";
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    function drawLine(a, b) {
+      configureBrush();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      resetBrush();
+    }
+
+    function drawSpark(point) {
+      configureBrush();
+      const count = Math.max(8, Math.round(state.size * .8));
+      for (let i = 0; i < count; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * state.size * 2.8;
+        const dot = Math.max(1.8, Math.random() * state.size * .38);
+        ctx.globalAlpha = .20 + Math.random() * .72;
+        ctx.beginPath();
+        ctx.arc(point.x + Math.cos(angle) * radius, point.y + Math.sin(angle) * radius, dot, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      resetBrush();
+    }
+
+    function drawSegment(a, b) {
+      if (state.tool === "spark") {
+        drawSpark(b);
+        if (state.mode === "mirror") drawSpark(mirrored(b));
+        if (state.mode === "mandala") {
+          const center = { x: canvas.width / 2, y: canvas.height / 2 };
+          for (let i = 1; i < 8; i += 1) drawSpark(rotatePoint(b, center, Math.PI * 2 * i / 8));
+        }
+        return;
+      }
+
+      if (state.mode === "mirror") {
+        drawLine(a, b);
+        drawLine(mirrored(a), mirrored(b));
+        return;
+      }
+
+      if (state.mode === "mandala") {
+        const center = { x: canvas.width / 2, y: canvas.height / 2 };
+        for (let i = 0; i < 8; i += 1) {
+          const angle = Math.PI * 2 * i / 8;
+          drawLine(rotatePoint(a, center, angle), rotatePoint(b, center, angle));
+        }
+        return;
+      }
+
+      drawLine(a, b);
+    }
+
+    function analyzePoints(points) {
+      if (points.length < 2) return null;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      let path = 0;
+      let turns = 0;
+      let lastAngle = null;
+
+      for (let i = 0; i < points.length; i += 1) {
+        const p = points[i];
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+        if (i > 0) {
+          const prev = points[i - 1];
+          path += distance(prev, p);
+          const angle = Math.atan2(p.y - prev.y, p.x - prev.x);
+          if (lastAngle !== null) {
+            let diff = Math.abs(angle - lastAngle);
+            diff = Math.min(diff, Math.PI * 2 - diff);
+            if (diff > .72) turns += 1;
+          }
+          lastAngle = angle;
+        }
+      }
+
+      const first = points[0];
+      const last = points[points.length - 1];
+      const width = Math.max(1, maxX - minX);
+      const height = Math.max(1, maxY - minY);
+      const diagonal = Math.hypot(width, height);
+      const direct = distance(first, last);
+      const closed = direct < Math.max(34, diagonal * .16);
+      const straightness = path ? direct / path : 0;
+      const aspect = width / height;
+      const area = width * height;
+
+      return {
+        minX,
+        minY,
+        maxX,
+        maxY,
+        width,
+        height,
+        area,
+        path,
+        direct,
+        diagonal,
+        closed,
+        straightness,
+        aspect,
+        turns,
+        first,
+        last,
+        points: points.slice()
+      };
+    }
+
+    function describeStroke(stats) {
+      if (!stats) return { guess: "아직 몰라요", mood: "대기 중", confidence: 0, hint: "미션을 시작하거나 캔버스에 선을 그려보세요." };
+      if (stats.straightness > .88 && stats.path > 80) {
+        return { guess: "긴 선", mood: "곧고 빠른 선", confidence: 78, hint: "직선을 여러 개 엮으면 집, 로봇, 우산 손잡이처럼 보입니다." };
+      }
+      if (stats.closed && stats.aspect > .72 && stats.aspect < 1.34) {
+        return { guess: "동그란 형태", mood: "닫힌 곡선", confidence: 86, hint: "바깥으로 짧은 선을 더하면 해, 안쪽에 점을 더하면 얼굴이 됩니다." };
+      }
+      if (stats.closed && stats.aspect >= 1.34) {
+        return { guess: "넓은 몸통", mood: "납작한 닫힌 선", confidence: 74, hint: "오른쪽이나 왼쪽에 꼬리를 붙이면 물고기 느낌이 살아납니다." };
+      }
+      if (stats.turns > 11 && stats.width > 90 && stats.height > 60) {
+        return { guess: "구름이나 잎", mood: "리듬 있는 곡선", confidence: 70, hint: "줄기나 작은 점을 더하면 나무, 꽃, 구름으로 이어집니다." };
+      }
+      if (stats.height > stats.width * 1.6 && stats.path > 100) {
+        return { guess: "세로 형태", mood: "길게 선 느낌", confidence: 63, hint: "윗부분을 크게 만들면 나무, 팔과 다리를 더하면 캐릭터가 됩니다." };
+      }
+      return { guess: "추상 드로잉", mood: "자유로운 선", confidence: 44, hint: "닫힌 모양 하나와 직선 몇 개를 섞으면 스마트 점수가 더 잘 올라갑니다." };
+    }
+
+    function summarizeDrawing() {
+      const summary = {
+        strokes: state.strokeStats.length,
+        closed: 0,
+        round: 0,
+        straight: 0,
+        wideClosed: 0,
+        tall: 0,
+        turns: 0,
+        area: 0,
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity
+      };
+
+      state.strokeStats.forEach((stats) => {
+        summary.closed += stats.closed ? 1 : 0;
+        summary.round += stats.closed && stats.aspect > .72 && stats.aspect < 1.34 ? 1 : 0;
+        summary.straight += stats.straightness > .86 && stats.path > 80 ? 1 : 0;
+        summary.wideClosed += stats.closed && stats.aspect > 1.32 ? 1 : 0;
+        summary.tall += stats.height > stats.width * 1.45 ? 1 : 0;
+        summary.turns += stats.turns;
+        summary.minX = Math.min(summary.minX, stats.minX);
+        summary.minY = Math.min(summary.minY, stats.minY);
+        summary.maxX = Math.max(summary.maxX, stats.maxX);
+        summary.maxY = Math.max(summary.maxY, stats.maxY);
+      });
+
+      if (summary.strokes > 0) {
+        summary.area = (summary.maxX - summary.minX) * (summary.maxY - summary.minY);
+      }
+
+      return summary;
+    }
+
+    function computeScore() {
+      const summary = summarizeDrawing();
+      if (!summary.strokes) return 0;
+      let score = Math.min(28, summary.strokes * 4);
+      score += Math.min(18, summary.turns * 1.2);
+      score += Math.min(14, summary.area / 26000);
+
+      switch (state.mission.target) {
+        case "sun":
+          score += summary.round * 34 + Math.min(24, summary.straight * 6);
+          break;
+        case "house":
+          score += Math.min(38, summary.straight * 8) + (summary.area > 70000 ? 18 : 0);
+          break;
+        case "flower":
+          score += summary.round * 16 + Math.min(28, summary.closed * 7) + Math.min(12, summary.tall * 6);
+          break;
+        case "tree":
+          score += Math.min(30, summary.tall * 10) + Math.min(24, summary.turns * 1.4);
+          break;
+        case "fish":
+          score += summary.wideClosed * 38 + Math.min(22, summary.straight * 6);
+          break;
+        case "cat":
+          score += summary.round * 26 + Math.min(24, summary.straight * 5) + (summary.closed > 1 ? 12 : 0);
+          break;
+        case "robot":
+          score += Math.min(44, summary.straight * 9) + (summary.closed > 1 ? 14 : 0);
+          break;
+        case "umbrella":
+          score += Math.min(34, summary.wideClosed * 22 + summary.turns * 1.1) + Math.min(22, summary.tall * 8);
+          break;
+        default:
+          score += 10;
+      }
+
+      return Math.max(0, Math.min(100, Math.round(score)));
+    }
+
+    function updateScore() {
+      state.score = computeScore();
+      scoreText.textContent = String(state.score);
+      scoreFill.style.width = `${state.score}%`;
+    }
+
+    function updateSmartPanel(latestStats = null) {
+      const latest = latestStats || state.strokeStats[state.strokeStats.length - 1] || null;
+      const desc = describeStroke(latest);
+      guessText.textContent = desc.guess;
+      strokeMood.textContent = desc.mood;
+      smartHint.textContent = desc.hint;
+      confidenceText.textContent = `${desc.confidence}%`;
+      floatingGuess.textContent = `추측: ${desc.guess}`;
+      floatingHint.textContent = desc.hint;
+      updateScore();
+    }
+
+    function drawSnappedShape(stats) {
+      const pad = Math.max(4, state.size * .6);
+      const color = state.color;
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = state.size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.shadowColor = state.tool === "neon" ? color : "transparent";
+      ctx.shadowBlur = state.tool === "neon" ? state.size : 0;
+
+      if (stats.straightness > .86) {
+        ctx.beginPath();
+        ctx.moveTo(stats.first.x, stats.first.y);
+        ctx.lineTo(stats.last.x, stats.last.y);
+        ctx.stroke();
+      } else if (stats.closed) {
+        ctx.beginPath();
+        ctx.ellipse(
+          stats.minX + stats.width / 2,
+          stats.minY + stats.height / 2,
+          Math.max(12, stats.width / 2 - pad),
+          Math.max(12, stats.height / 2 - pad),
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function maybeSnapStroke(stats) {
+      if (state.mode !== "tidy" || state.tool === "eraser" || state.tool === "spark" || !stats || !state.beforeStroke) return false;
+      const canSnapLine = stats.straightness > .86 && stats.path > 70;
+      const canSnapLoop = stats.closed && stats.width > 36 && stats.height > 36;
+      if (!canSnapLine && !canSnapLoop) return false;
+      ctx.putImageData(state.beforeStroke, 0, 0);
+      drawSnappedShape(stats);
+      return true;
+    }
+
+    function startDrawing(event) {
+      event.preventDefault();
+      canvas.setPointerCapture(event.pointerId);
+      saveUndo();
+      state.beforeStroke = state.undoStack[state.undoStack.length - 1];
+      state.drawing = true;
+      const point = pointFromEvent(event);
+      state.points = [point];
+      if (state.tool === "spark") drawSpark(point);
+    }
+
+    function moveDrawing(event) {
+      if (!state.drawing) return;
+      const point = pointFromEvent(event);
+      const prev = state.points[state.points.length - 1];
+      if (distance(prev, point) < 1.5) return;
+      drawSegment(prev, point);
+      state.points.push(point);
+      const previewStats = analyzePoints(state.points);
+      updateSmartPanel(previewStats);
+    }
+
+    function endDrawing(event) {
+      if (!state.drawing) return;
+      state.drawing = false;
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch (error) {
+        /* Pointer capture can already be released by the browser. */
+      }
+      const stats = analyzePoints(state.points);
+      if (stats) {
+        maybeSnapStroke(stats);
+        state.strokeStats.push(stats);
+      }
+      state.points = [];
+      state.beforeStroke = null;
+      updateSmartPanel(stats);
+    }
+
+    function setTool(tool) {
+      state.tool = tool;
+      const names = { pen: "펜", marker: "마커", neon: "네온", spark: "스파클", eraser: "지우개" };
+      activeToolName.textContent = names[tool];
+      document.querySelectorAll(".tool-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tool === tool);
+      });
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      const names = { free: "자유", mirror: "미러", mandala: "만다라", tidy: "보정" };
+      activeModeName.textContent = names[mode];
+      document.querySelectorAll(".mode-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+    }
+
+    function setColor(color) {
+      const selected = palette.find((item) => item.value === color) || palette[0];
+      state.color = selected.value;
+      state.colorName = selected.name;
+      activeColorName.textContent = selected.name;
+      document.querySelectorAll(".swatch").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.color === color);
+      });
+    }
+
+    function setMission(nextMission) {
+      state.mission = nextMission;
+      missionName.textContent = nextMission.name;
+      updateScore();
+    }
+
+    function randomMission() {
+      const currentIndex = missions.indexOf(state.mission);
+      let nextIndex = Math.floor(Math.random() * missions.length);
+      if (missions.length > 1 && nextIndex === currentIndex) nextIndex = (nextIndex + 1) % missions.length;
+      setMission(missions[nextIndex]);
+    }
+
+    function startChallenge() {
+      clearInterval(state.interval);
+      clearCanvas(true);
+      state.timer = 45;
+      timerText.textContent = String(state.timer);
+      state.interval = setInterval(() => {
+        state.timer -= 1;
+        timerText.textContent = String(Math.max(0, state.timer));
+        if (state.timer <= 0) {
+          clearInterval(state.interval);
+          floatingGuess.textContent = `완성 점수: ${state.score}`;
+          floatingHint.textContent = state.score > 72 ? "좋아요. 미션의 특징이 꽤 또렷합니다." : "한 번 더 해보면 형태가 더 살아날 것 같아요.";
+        }
+      }, 1000);
+    }
+
+    function undo() {
+      const previous = state.undoStack.pop();
+      if (!previous) return;
+      ctx.putImageData(previous, 0, 0);
+      state.strokeStats.pop();
+      updateSmartPanel();
+    }
+
+    function savePng() {
+      const link = document.createElement("a");
+      link.download = "smart-drawing.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+
+    function drawStamp(type) {
+      saveUndo();
+      const x = canvas.width / 2;
+      const y = canvas.height / 2;
+      const color = state.color;
+      const accent = type === "sun" ? "#d89018" : type === "tree" ? "#0a9b73" : type === "flower" ? "#d94275" : color;
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = Math.max(5, state.size);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = accent;
+
+      if (type === "sun") {
+        ctx.strokeStyle = "#d89018";
+        for (let i = 0; i < 12; i += 1) {
+          const a = Math.PI * 2 * i / 12;
+          ctx.beginPath();
+          ctx.moveTo(x + Math.cos(a) * 88, y + Math.sin(a) * 88);
+          ctx.lineTo(x + Math.cos(a) * 138, y + Math.sin(a) * 138);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "rgba(216, 144, 24, .22)";
+        ctx.beginPath();
+        ctx.arc(x, y, 70, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      if (type === "flower") {
+        ctx.strokeStyle = "#47a447";
+        ctx.beginPath();
+        ctx.moveTo(x, y + 50);
+        ctx.quadraticCurveTo(x - 18, y + 126, x - 8, y + 190);
+        ctx.stroke();
+        ctx.strokeStyle = "#d94275";
+        ctx.fillStyle = "rgba(217, 66, 117, .20)";
+        for (let i = 0; i < 7; i += 1) {
+          const a = Math.PI * 2 * i / 7;
+          ctx.beginPath();
+          ctx.ellipse(x + Math.cos(a) * 48, y + Math.sin(a) * 42, 34, 20, a, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#d89018";
+        ctx.beginPath();
+        ctx.arc(x, y, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (type === "tree") {
+        ctx.strokeStyle = "#7a4d2b";
+        ctx.beginPath();
+        ctx.moveTo(x - 18, y + 138);
+        ctx.lineTo(x - 4, y + 24);
+        ctx.lineTo(x + 18, y + 138);
+        ctx.stroke();
+        ctx.strokeStyle = "#0a9b73";
+        ctx.fillStyle = "rgba(10, 155, 115, .18)";
+        [[0, -48, 70], [-46, 0, 52], [48, 2, 52], [0, 18, 58]].forEach(([dx, dy, r]) => {
+          ctx.beginPath();
+          ctx.arc(x + dx, y + dy, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        });
+      }
+
+      if (type === "house") {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = "rgba(45, 108, 223, .09)";
+        ctx.beginPath();
+        ctx.moveTo(x - 118, y - 18);
+        ctx.lineTo(x, y - 118);
+        ctx.lineTo(x + 118, y - 18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeRect(x - 92, y - 18, 184, 144);
+        ctx.strokeRect(x - 22, y + 46, 44, 80);
+        ctx.strokeRect(x - 70, y + 24, 38, 36);
+        ctx.strokeRect(x + 32, y + 24, 38, 36);
+      }
+
+      if (type === "fish") {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = "rgba(33, 166, 199, .20)";
+        ctx.beginPath();
+        ctx.ellipse(x - 10, y, 116, 62, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + 98, y);
+        ctx.lineTo(x + 176, y - 58);
+        ctx.lineTo(x + 176, y + 58);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x - 72, y - 18, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (type === "cat") {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = "rgba(217, 66, 117, .12)";
+        ctx.beginPath();
+        ctx.moveTo(x - 76, y - 42);
+        ctx.lineTo(x - 54, y - 112);
+        ctx.lineTo(x - 12, y - 62);
+        ctx.lineTo(x + 14, y - 62);
+        ctx.lineTo(x + 56, y - 112);
+        ctx.lineTo(x + 78, y - 42);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 82, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x - 28, y - 12, 7, 0, Math.PI * 2);
+        ctx.arc(x + 28, y - 12, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x - 70, y + 20);
+        ctx.lineTo(x - 138, y + 4);
+        ctx.moveTo(x - 70, y + 38);
+        ctx.lineTo(x - 134, y + 52);
+        ctx.moveTo(x + 70, y + 20);
+        ctx.lineTo(x + 138, y + 4);
+        ctx.moveTo(x + 70, y + 38);
+        ctx.lineTo(x + 134, y + 52);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      state.strokeStats.push({
+        minX: x - 180,
+        minY: y - 140,
+        maxX: x + 180,
+        maxY: y + 200,
+        width: 360,
+        height: 340,
+        area: 122400,
+        path: 600,
+        direct: 0,
+        diagonal: 495,
+        closed: true,
+        straightness: type === "house" ? .92 : .28,
+        aspect: type === "fish" ? 2.1 : 1,
+        turns: type === "sun" || type === "flower" ? 16 : 7,
+        first: { x: x - 120, y },
+        last: { x: x + 120, y },
+        points: []
+      });
+      updateSmartPanel();
+    }
+
+    function buildPalette() {
+      palette.forEach((item) => {
+        const button = document.createElement("button");
+        button.className = "swatch";
+        button.dataset.color = item.value;
+        button.title = item.name;
+        button.style.background = item.value;
+        button.addEventListener("click", () => setColor(item.value));
+        colorGrid.appendChild(button);
+      });
+      setColor(state.color);
+    }
+
+    document.querySelectorAll(".tool-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setTool(btn.dataset.tool));
+    });
+
+    document.querySelectorAll(".mode-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setMode(btn.dataset.mode));
+    });
+
+    document.querySelectorAll(".stamp-btn").forEach((btn) => {
+      btn.addEventListener("click", () => drawStamp(btn.dataset.stamp));
+    });
+
+    sizeRange.addEventListener("input", () => {
+      state.size = Number(sizeRange.value);
+      sizeReadout.textContent = String(state.size);
+    });
+
+    document.querySelector("#undoBtn").addEventListener("click", undo);
+    document.querySelector("#clearBtn").addEventListener("click", () => clearCanvas(true));
+    document.querySelector("#saveBtn").addEventListener("click", savePng);
+    document.querySelector("#missionBtn").addEventListener("click", randomMission);
+    document.querySelector("#startBtn").addEventListener("click", startChallenge);
+
+    canvas.addEventListener("pointerdown", startDrawing);
+    canvas.addEventListener("pointermove", moveDrawing);
+    canvas.addEventListener("pointerup", endDrawing);
+    canvas.addEventListener("pointercancel", endDrawing);
+    canvas.addEventListener("pointerleave", (event) => {
+      if (state.drawing && event.buttons === 0) endDrawing(event);
+    });
+
+    buildPalette();
+    setupCanvas();
+    updateSmartPanel();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1567 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>반 그림퀴즈</title>
+  <style>
+    :root {
+      --bg: #edf1f5;
+      --paper: #ffffff;
+      --ink: #161a22;
+      --muted: #657184;
+      --line: #d8dee8;
+      --soft: #f3f6fa;
+      --blue: #2767d8;
+      --green: #088a6a;
+      --pink: #d93b6f;
+      --yellow: #d99a1f;
+      --violet: #6956d8;
+      --red: #d94848;
+      --shadow: 0 16px 38px rgba(22, 26, 34, .12);
+      color-scheme: light;
+      font-family: "Segoe UI", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 8%, rgba(39, 103, 216, .13), transparent 24%),
+        radial-gradient(circle at 84% 18%, rgba(8, 138, 106, .12), transparent 23%),
+        linear-gradient(135deg, #edf1f5 0%, #f8fafc 46%, #eef3f1 100%);
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    input,
+    select,
+    textarea {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px minmax(520px, 1fr) 312px;
+      gap: 12px;
+      height: 100vh;
+      padding: 12px;
+    }
+
+    .panel,
+    .stage-card,
+    .topbar,
+    .toolbar {
+      border: 1px solid rgba(216, 222, 232, .95);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--blue), var(--pink) 54%, var(--yellow));
+      color: #fff;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .brand p,
+    .section-title span,
+    .tiny,
+    .meta,
+    .guess-time {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .brand p {
+      margin-top: 4px;
+    }
+
+    .section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .section-title strong {
+      font-size: 13px;
+    }
+
+    .team-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .team-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .team-card.active {
+      border-color: rgba(39, 103, 216, .65);
+      box-shadow: 0 0 0 3px rgba(39, 103, 216, .12);
+    }
+
+    .team-main {
+      min-width: 0;
+    }
+
+    .team-name {
+      width: 100%;
+      min-height: 32px;
+      padding: 6px 8px;
+      font-weight: 800;
+    }
+
+    .team-score {
+      display: grid;
+      min-width: 52px;
+      min-height: 52px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--blue);
+      font-size: 24px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .score-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      grid-column: 1 / -1;
+    }
+
+    .mini-btn,
+    .main-btn,
+    .mode-btn,
+    .tool-btn,
+    .swatch {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+
+    .mini-btn {
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .mini-btn.plus {
+      color: var(--green);
+    }
+
+    .mini-btn.minus {
+      color: var(--red);
+    }
+
+    .mini-btn.select {
+      color: var(--blue);
+    }
+
+    .mini-btn:active,
+    .main-btn:active,
+    .mode-btn:active,
+    .tool-btn:active,
+    .swatch:active {
+      transform: translateY(1px);
+    }
+
+    .round-list {
+      display: grid;
+      gap: 7px;
+      max-height: 198px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .round-item {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--soft);
+      font-size: 12px;
+    }
+
+    .round-num {
+      display: grid;
+      height: 28px;
+      place-items: center;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--blue);
+      font-weight: 900;
+    }
+
+    .round-word {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }
+
+    .round-team {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .deck-controls {
+      display: grid;
+      gap: 8px;
+    }
+
+    .deck-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 8px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 9px 10px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-width: 0;
+      min-height: 0;
+      gap: 10px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px 176px;
+      gap: 10px;
+      align-items: center;
+      min-height: 82px;
+      padding: 10px;
+    }
+
+    .word-card {
+      display: grid;
+      min-width: 0;
+      gap: 5px;
+      padding: 11px 12px;
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, rgba(39, 103, 216, .10), transparent 72%),
+        var(--soft);
+    }
+
+    .word-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-grid;
+      min-height: 22px;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .word {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: clamp(24px, 3vw, 44px);
+      line-height: 1.04;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .timer-box {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .timer-ring {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--green) var(--timer-deg, 360deg), #e7ebf1 0);
+    }
+
+    .timer-inner {
+      display: grid;
+      width: 44px;
+      height: 44px;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff;
+      font-size: 17px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .main-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .main-btn {
+      display: inline-grid;
+      grid-template-columns: 22px minmax(0, auto);
+      gap: 6px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 9px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .main-btn.primary {
+      border-color: rgba(39, 103, 216, .46);
+      background: rgba(39, 103, 216, .11);
+      color: #174aa6;
+    }
+
+    .main-btn.good {
+      border-color: rgba(8, 138, 106, .42);
+      background: rgba(8, 138, 106, .12);
+      color: #067456;
+    }
+
+    .main-btn.warn {
+      color: #a96700;
+    }
+
+    .main-btn.danger {
+      color: #aa3030;
+    }
+
+    .icon {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .78);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .btn-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stage-card {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(45deg, #f1f4f8 25%, transparent 25%),
+        linear-gradient(-45deg, #f1f4f8 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f1f4f8 75%),
+        linear-gradient(-45deg, transparent 75%, #f1f4f8 75%);
+      background-color: #fff;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background-size: 24px 24px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 340px;
+      background: #fff;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .round-toast {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      max-width: calc(100% - 28px);
+      padding: 10px 13px;
+      border: 1px solid rgba(216, 222, 232, .9);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .94);
+      box-shadow: 0 10px 28px rgba(22, 26, 34, .14);
+      transform: translate(-50%, -8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .round-toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(214px, auto) minmax(200px, 1fr) 180px;
+      gap: 10px;
+      align-items: center;
+      padding: 9px;
+    }
+
+    .tools,
+    .colors {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .tool-btn {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .tool-btn.active {
+      border-color: rgba(39, 103, 216, .65);
+      background: rgba(39, 103, 216, .11);
+      color: #174aa6;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      min-height: 30px;
+      border: 2px solid #fff;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .20), 0 0 0 1px var(--line);
+      flex: 0 0 auto;
+    }
+
+    .swatch.active {
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .24), 0 0 0 3px rgba(39, 103, 216, .25);
+    }
+
+    .size-wrap {
+      display: grid;
+      grid-template-columns: 1fr 42px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .size-out {
+      display: grid;
+      min-height: 32px;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .guess-panel {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .guess-input-card {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .guess-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 78px;
+      gap: 8px;
+    }
+
+    .guess-form input {
+      min-width: 0;
+      min-height: 42px;
+      padding: 8px 10px;
+      font-weight: 800;
+    }
+
+    .guess-form button {
+      min-height: 42px;
+    }
+
+    .team-picker {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .mode-btn {
+      padding: 6px;
+      font-size: 12px;
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mode-btn.active {
+      border-color: rgba(39, 103, 216, .65);
+      background: rgba(39, 103, 216, .11);
+      color: #174aa6;
+    }
+
+    .guess-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stat {
+      display: grid;
+      gap: 4px;
+      min-height: 58px;
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .stat strong {
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .guess-log {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .guess-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .guess-item {
+      display: grid;
+      gap: 4px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .guess-item.correct {
+      border-color: rgba(8, 138, 106, .45);
+      background: rgba(8, 138, 106, .10);
+    }
+
+    .guess-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .guess-word {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .guess-team {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .empty {
+      display: grid;
+      min-height: 120px;
+      place-items: center;
+      border: 1px dashed #ccd4df;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 8px;
+      height: 14px;
+      border-radius: 3px;
+      pointer-events: none;
+      animation: fall 850ms ease-out forwards;
+    }
+
+    @keyframes fall {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px) rotate(0deg) scale(.8);
+      }
+      20% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(220px) rotate(260deg) scale(1);
+      }
+    }
+
+    @media (max-width: 1180px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        grid-template-columns: 260px minmax(0, 1fr);
+        grid-template-rows: minmax(650px, 1fr) auto;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .guess-panel {
+        grid-column: 1 / -1;
+        grid-template-columns: 320px 1fr;
+        grid-template-rows: auto minmax(200px, 1fr);
+        overflow: visible;
+      }
+
+      .guess-input-card {
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+      }
+
+      .guess-stats {
+        border-bottom: 0;
+      }
+
+      .guess-log {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        grid-template-columns: 1fr;
+        padding: 10px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .tools,
+      .colors {
+        flex-wrap: wrap;
+      }
+
+      .guess-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .guess-input-card {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .word {
+        font-size: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="panel" aria-label="게임 진행">
+      <div class="brand">
+        <div class="brand-mark">CQ</div>
+        <div>
+          <h1>반 그림퀴즈</h1>
+          <p>팀전 드로잉 맞히기</p>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="section-title">
+          <strong>팀 점수</strong>
+          <span id="leaderText">동점</span>
+        </div>
+        <div class="team-list" id="teamList"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <strong>문제 카드</strong>
+          <span id="deckCount">0개</span>
+        </div>
+        <div class="deck-controls">
+          <div class="deck-row">
+            <select id="categorySelect" aria-label="카테고리">
+              <option value="all">전체</option>
+              <option value="school">학교</option>
+              <option value="object">물건</option>
+              <option value="place">장소</option>
+              <option value="action">행동</option>
+              <option value="hard">어려움</option>
+            </select>
+            <button class="mini-btn select" id="shuffleBtn">섞기</button>
+          </div>
+          <textarea id="customWords" placeholder="단어 추가"></textarea>
+          <button class="mini-btn plus" id="addWordsBtn">단어 넣기</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">
+          <strong>라운드 기록</strong>
+          <span id="roundCount">0R</span>
+        </div>
+        <div class="round-list" id="roundList"></div>
+      </section>
+    </aside>
+
+    <section class="stage" aria-label="그림퀴즈 무대">
+      <header class="topbar">
+        <div class="word-card">
+          <div class="word-meta">
+            <span class="pill" id="roundPill">1R</span>
+            <span class="pill" id="categoryPill">전체</span>
+            <span class="pill" id="levelPill">보통</span>
+          </div>
+          <div class="word" id="wordText">가려진 제시어</div>
+        </div>
+
+        <div class="timer-box">
+          <div class="timer-ring" id="timerRing">
+            <div class="timer-inner" id="timerText">90</div>
+          </div>
+          <div class="timer-actions">
+            <button class="mini-btn plus" id="timerStartBtn">시작</button>
+            <button class="mini-btn" id="timerResetBtn">리셋</button>
+          </div>
+        </div>
+
+        <div class="main-actions">
+          <button class="main-btn primary" id="newRoundBtn">
+            <span class="icon">N</span><span class="btn-label">새 문제</span>
+          </button>
+          <button class="main-btn warn" id="revealBtn">
+            <span class="icon">V</span><span class="btn-label">보기</span>
+          </button>
+          <button class="main-btn good" id="correctBtn">
+            <span class="icon">O</span><span class="btn-label">정답</span>
+          </button>
+          <button class="main-btn danger" id="skipBtn">
+            <span class="icon">X</span><span class="btn-label">패스</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="stage-card" id="canvasWrap">
+        <canvas id="drawCanvas" width="1400" height="900" aria-label="그림판"></canvas>
+        <div class="round-toast" id="toast">정답</div>
+      </div>
+
+      <footer class="toolbar" aria-label="그리기 도구">
+        <div class="tools">
+          <button class="tool-btn active" data-tool="pen" title="펜">P</button>
+          <button class="tool-btn" data-tool="marker" title="마커">M</button>
+          <button class="tool-btn" data-tool="eraser" title="지우개">E</button>
+          <button class="tool-btn" id="undoBtn" title="되돌리기">U</button>
+          <button class="tool-btn" id="clearBtn" title="비우기">C</button>
+        </div>
+        <div class="colors" id="colorBar"></div>
+        <div class="size-wrap">
+          <input id="sizeRange" type="range" min="3" max="42" value="10" aria-label="굵기">
+          <output class="size-out" id="sizeOut">10</output>
+        </div>
+      </footer>
+    </section>
+
+    <aside class="panel guess-panel" aria-label="정답 입력">
+      <section class="guess-input-card">
+        <div class="section-title">
+          <strong>발언 팀</strong>
+          <span id="activeTeamName">1팀</span>
+        </div>
+        <div class="team-picker" id="teamPicker"></div>
+        <form class="guess-form" id="guessForm">
+          <input id="guessInput" type="text" autocomplete="off" placeholder="답 입력">
+          <button class="mini-btn plus" type="submit">확인</button>
+        </form>
+      </section>
+
+      <section class="guess-stats">
+        <div class="stat">
+          <span class="tiny">남은 문제</span>
+          <strong id="leftCount">0</strong>
+        </div>
+        <div class="stat">
+          <span class="tiny">시도</span>
+          <strong id="tryCount">0</strong>
+        </div>
+        <div class="stat">
+          <span class="tiny">정답</span>
+          <strong id="hitCount">0</strong>
+        </div>
+      </section>
+
+      <section class="guess-log">
+        <div class="section-title">
+          <strong>입력 기록</strong>
+          <span id="lastResult">대기</span>
+        </div>
+        <div class="guess-list" id="guessList">
+          <div class="empty">아직 입력이 없습니다.</div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#drawCanvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const teamList = document.querySelector("#teamList");
+    const teamPicker = document.querySelector("#teamPicker");
+    const colorBar = document.querySelector("#colorBar");
+    const sizeRange = document.querySelector("#sizeRange");
+    const sizeOut = document.querySelector("#sizeOut");
+    const wordText = document.querySelector("#wordText");
+    const roundPill = document.querySelector("#roundPill");
+    const categoryPill = document.querySelector("#categoryPill");
+    const levelPill = document.querySelector("#levelPill");
+    const timerText = document.querySelector("#timerText");
+    const timerRing = document.querySelector("#timerRing");
+    const categorySelect = document.querySelector("#categorySelect");
+    const deckCount = document.querySelector("#deckCount");
+    const leftCount = document.querySelector("#leftCount");
+    const tryCount = document.querySelector("#tryCount");
+    const hitCount = document.querySelector("#hitCount");
+    const guessList = document.querySelector("#guessList");
+    const roundList = document.querySelector("#roundList");
+    const roundCount = document.querySelector("#roundCount");
+    const leaderText = document.querySelector("#leaderText");
+    const activeTeamName = document.querySelector("#activeTeamName");
+    const lastResult = document.querySelector("#lastResult");
+    const toast = document.querySelector("#toast");
+
+    const palette = ["#161a22", "#2767d8", "#088a6a", "#d93b6f", "#d99a1f", "#6956d8", "#21a2b8", "#ef6a36", "#ffffff"];
+    const baseWords = [
+      ["급식실", "school", "쉬움"],
+      ["칠판", "school", "쉬움"],
+      ["교복", "school", "쉬움"],
+      ["체육대회", "school", "보통"],
+      ["발표", "school", "보통"],
+      ["시험공부", "school", "보통"],
+      ["과학실험", "school", "보통"],
+      ["지각", "school", "어려움"],
+      ["분리수거", "school", "어려움"],
+      ["비밀친구", "school", "어려움"],
+      ["우산", "object", "쉬움"],
+      ["축구공", "object", "쉬움"],
+      ["스마트폰", "object", "쉬움"],
+      ["피아노", "object", "보통"],
+      ["드론", "object", "보통"],
+      ["로봇청소기", "object", "보통"],
+      ["마이크", "object", "쉬움"],
+      ["자전거", "object", "쉬움"],
+      ["떡볶이", "object", "쉬움"],
+      ["감자튀김", "object", "쉬움"],
+      ["도서관", "place", "쉬움"],
+      ["버스정류장", "place", "보통"],
+      ["편의점", "place", "쉬움"],
+      ["분식집", "place", "보통"],
+      ["놀이공원", "place", "쉬움"],
+      ["바닷가", "place", "쉬움"],
+      ["야구장", "place", "보통"],
+      ["화산", "place", "보통"],
+      ["우주정거장", "place", "어려움"],
+      ["피라미드", "place", "보통"],
+      ["달리기", "action", "쉬움"],
+      ["잠자는 고양이", "action", "보통"],
+      ["생일파티", "action", "쉬움"],
+      ["캠핑", "action", "보통"],
+      ["코딩", "action", "보통"],
+      ["치킨 먹방", "action", "어려움"],
+      ["마법 쓰기", "action", "어려움"],
+      ["눈싸움", "action", "보통"],
+      ["숨바꼭질", "action", "보통"],
+      ["박수", "action", "쉬움"],
+      ["무지개", "hard", "쉬움"],
+      ["상어", "hard", "쉬움"],
+      ["해파리", "hard", "보통"],
+      ["공룡", "hard", "쉬움"],
+      ["우주선", "hard", "보통"],
+      ["마법사", "hard", "보통"],
+      ["슈퍼히어로", "hard", "보통"],
+      ["태풍", "hard", "어려움"],
+      ["감기", "hard", "어려움"],
+      ["시간여행", "hard", "어려움"]
+    ].map(([word, category, level]) => ({ word, category, level }));
+
+    const state = {
+      words: [...baseWords],
+      usedWords: [],
+      current: null,
+      round: 0,
+      reveal: false,
+      teams: [
+        { name: "1팀", score: 0 },
+        { name: "2팀", score: 0 },
+        { name: "3팀", score: 0 },
+        { name: "4팀", score: 0 }
+      ],
+      activeTeam: 0,
+      duration: 90,
+      timeLeft: 90,
+      timerId: null,
+      running: false,
+      guesses: [],
+      rounds: [],
+      hits: 0,
+      tool: "pen",
+      color: palette[0],
+      size: 10,
+      drawing: false,
+      lastPoint: null,
+      undoStack: []
+    };
+
+    function normalize(value) {
+      return String(value || "").toLowerCase().replace(/[\s\W_]+/g, "");
+    }
+
+    function categoryName(category) {
+      const names = {
+        all: "전체",
+        school: "학교",
+        object: "물건",
+        place: "장소",
+        action: "행동",
+        hard: "어려움",
+        custom: "추가"
+      };
+      return names[category] || category;
+    }
+
+    function saveTeams() {
+      localStorage.setItem("classCatchTeams", JSON.stringify(state.teams));
+    }
+
+    function loadTeams() {
+      try {
+        const stored = JSON.parse(localStorage.getItem("classCatchTeams") || "null");
+        if (Array.isArray(stored) && stored.length === 4) {
+          state.teams = stored.map((team, index) => ({
+            name: String(team.name || `${index + 1}팀`).slice(0, 12),
+            score: Number(team.score) || 0
+          }));
+        }
+      } catch (error) {
+        localStorage.removeItem("classCatchTeams");
+      }
+    }
+
+    function setupCanvas() {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.globalAlpha = .16;
+      ctx.fillStyle = "#657184";
+      ctx.font = "22px Segoe UI, sans-serif";
+      ctx.fillText("Class Drawing Quiz", 34, canvas.height - 34);
+      ctx.restore();
+    }
+
+    function clearCanvas(record = true) {
+      if (record) pushUndo();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      setupCanvas();
+    }
+
+    function pushUndo() {
+      state.undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      if (state.undoStack.length > 18) state.undoStack.shift();
+    }
+
+    function undo() {
+      const previous = state.undoStack.pop();
+      if (!previous) return;
+      ctx.putImageData(previous, 0, 0);
+    }
+
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height
+      };
+    }
+
+    function configureBrush() {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = state.tool === "eraser" ? "destination-out" : "source-over";
+      ctx.globalAlpha = state.tool === "marker" ? .26 : 1;
+      ctx.strokeStyle = state.color;
+      ctx.lineWidth = state.tool === "marker" ? state.size * 2.3 : state.size;
+    }
+
+    function resetBrush() {
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    function drawLine(from, to) {
+      configureBrush();
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+      resetBrush();
+    }
+
+    function startDraw(event) {
+      event.preventDefault();
+      canvas.setPointerCapture(event.pointerId);
+      pushUndo();
+      state.drawing = true;
+      state.lastPoint = pointFromEvent(event);
+      drawLine(state.lastPoint, state.lastPoint);
+    }
+
+    function moveDraw(event) {
+      if (!state.drawing) return;
+      const point = pointFromEvent(event);
+      drawLine(state.lastPoint, point);
+      state.lastPoint = point;
+    }
+
+    function endDraw(event) {
+      if (!state.drawing) return;
+      state.drawing = false;
+      state.lastPoint = null;
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch (error) {
+        /* Pointer capture may already be released. */
+      }
+    }
+
+    function filteredWords() {
+      const selected = categorySelect.value;
+      return state.words.filter((item) => {
+        if (selected === "all") return true;
+        return item.category === selected || (selected === "hard" && item.level === "어려움");
+      });
+    }
+
+    function pickWord() {
+      const pool = filteredWords();
+      if (!pool.length) return null;
+      let candidates = pool.filter((item) => !state.usedWords.includes(item.word));
+      if (!candidates.length) {
+        state.usedWords = state.usedWords.filter((word) => !pool.some((item) => item.word === word));
+        candidates = pool;
+      }
+      const index = Math.floor(Math.random() * candidates.length);
+      return candidates[index];
+    }
+
+    function updateWordDisplay() {
+      if (!state.current) {
+        wordText.textContent = "가려진 제시어";
+        categoryPill.textContent = categoryName(categorySelect.value);
+        levelPill.textContent = "보통";
+        return;
+      }
+      wordText.textContent = state.reveal ? state.current.word : "가려진 제시어";
+      categoryPill.textContent = categoryName(state.current.category);
+      levelPill.textContent = state.current.level;
+      roundPill.textContent = `${Math.max(1, state.round)}R`;
+    }
+
+    function newRound() {
+      const next = pickWord();
+      if (!next) {
+        showToast("단어 없음");
+        return;
+      }
+      stopTimer();
+      state.current = next;
+      state.usedWords.push(next.word);
+      state.round += 1;
+      state.reveal = false;
+      state.timeLeft = state.duration;
+      clearCanvas(true);
+      state.guesses = [];
+      lastResult.textContent = "대기";
+      updateWordDisplay();
+      updateTimer();
+      renderGuesses();
+      renderStats();
+      showToast(`${state.round}라운드`);
+    }
+
+    function toggleReveal() {
+      state.reveal = !state.reveal;
+      updateWordDisplay();
+    }
+
+    function startTimer() {
+      if (state.running) {
+        stopTimer();
+        return;
+      }
+      if (state.timeLeft <= 0) state.timeLeft = state.duration;
+      state.running = true;
+      document.querySelector("#timerStartBtn").textContent = "정지";
+      state.timerId = setInterval(() => {
+        state.timeLeft -= 1;
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          stopTimer();
+          showToast("시간 종료");
+        }
+        updateTimer();
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(state.timerId);
+      state.timerId = null;
+      state.running = false;
+      document.querySelector("#timerStartBtn").textContent = "시작";
+    }
+
+    function resetTimer() {
+      stopTimer();
+      state.timeLeft = state.duration;
+      updateTimer();
+    }
+
+    function updateTimer() {
+      timerText.textContent = String(state.timeLeft);
+      const deg = Math.max(0, state.timeLeft / state.duration) * 360;
+      timerRing.style.setProperty("--timer-deg", `${deg}deg`);
+      timerRing.style.background = `conic-gradient(${state.timeLeft <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e7ebf1 0)`;
+    }
+
+    function addScore(teamIndex, amount) {
+      state.teams[teamIndex].score = Math.max(0, state.teams[teamIndex].score + amount);
+      saveTeams();
+      renderTeams();
+      renderPicker();
+    }
+
+    function setActiveTeam(index) {
+      state.activeTeam = index;
+      activeTeamName.textContent = state.teams[index].name;
+      renderTeams();
+      renderPicker();
+    }
+
+    function markCorrect(source = "버튼") {
+      if (!state.current) return;
+      state.hits += 1;
+      addScore(state.activeTeam, 3);
+      stopTimer();
+      state.reveal = true;
+      state.rounds.unshift({
+        round: state.round,
+        word: state.current.word,
+        team: state.teams[state.activeTeam].name,
+        source
+      });
+      state.rounds = state.rounds.slice(0, 16);
+      updateWordDisplay();
+      renderRounds();
+      renderStats();
+      showToast(`${state.teams[state.activeTeam].name} 정답`);
+      burstConfetti();
+    }
+
+    function skipRound() {
+      if (!state.current) return;
+      state.rounds.unshift({
+        round: state.round,
+        word: state.current.word,
+        team: "패스",
+        source: "패스"
+      });
+      state.rounds = state.rounds.slice(0, 16);
+      stopTimer();
+      state.reveal = true;
+      updateWordDisplay();
+      renderRounds();
+      showToast("패스");
+    }
+
+    function submitGuess(value) {
+      const guess = String(value || "").trim();
+      if (!guess || !state.current) return;
+      const correct = normalize(guess) === normalize(state.current.word);
+      state.guesses.unshift({
+        text: guess,
+        team: state.teams[state.activeTeam].name,
+        correct,
+        time: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+      });
+      if (correct) {
+        lastResult.textContent = "정답";
+        renderGuesses();
+        markCorrect("입력");
+      } else {
+        lastResult.textContent = "오답";
+        showToast("아쉬워요");
+        renderGuesses();
+        renderStats();
+      }
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1100);
+    }
+
+    function burstConfetti() {
+      const wrap = document.querySelector("#canvasWrap");
+      const colors = ["#2767d8", "#088a6a", "#d93b6f", "#d99a1f", "#6956d8"];
+      for (let i = 0; i < 46; i += 1) {
+        const piece = document.createElement("i");
+        piece.className = "confetti";
+        piece.style.left = `${18 + Math.random() * 64}%`;
+        piece.style.top = `${6 + Math.random() * 18}%`;
+        piece.style.background = colors[i % colors.length];
+        piece.style.animationDelay = `${Math.random() * 140}ms`;
+        piece.style.transform = `rotate(${Math.random() * 220}deg)`;
+        wrap.appendChild(piece);
+        setTimeout(() => piece.remove(), 1100);
+      }
+    }
+
+    function renderTeams() {
+      teamList.innerHTML = "";
+      state.teams.forEach((team, index) => {
+        const card = document.createElement("div");
+        card.className = `team-card${index === state.activeTeam ? " active" : ""}`;
+        card.innerHTML = `
+          <div class="team-main">
+            <input class="team-name" value="${team.name}" maxlength="12" aria-label="${index + 1}팀 이름">
+          </div>
+          <div class="team-score">${team.score}</div>
+          <div class="score-buttons">
+            <button class="mini-btn select" data-action="select">선택</button>
+            <button class="mini-btn plus" data-action="plus">+1</button>
+            <button class="mini-btn minus" data-action="minus">-1</button>
+          </div>
+        `;
+        card.querySelector(".team-name").addEventListener("input", (event) => {
+          state.teams[index].name = event.target.value || `${index + 1}팀`;
+          saveTeams();
+          renderPicker();
+          activeTeamName.textContent = state.teams[state.activeTeam].name;
+        });
+        card.querySelector('[data-action="select"]').addEventListener("click", () => setActiveTeam(index));
+        card.querySelector('[data-action="plus"]').addEventListener("click", () => addScore(index, 1));
+        card.querySelector('[data-action="minus"]').addEventListener("click", () => addScore(index, -1));
+        teamList.appendChild(card);
+      });
+      const high = Math.max(...state.teams.map((team) => team.score));
+      const leaders = state.teams.filter((team) => team.score === high);
+      leaderText.textContent = high === 0 || leaders.length > 1 ? "동점" : `${leaders[0].name} 선두`;
+    }
+
+    function renderPicker() {
+      teamPicker.innerHTML = "";
+      state.teams.forEach((team, index) => {
+        const button = document.createElement("button");
+        button.className = `mode-btn${index === state.activeTeam ? " active" : ""}`;
+        button.type = "button";
+        button.textContent = team.name;
+        button.addEventListener("click", () => setActiveTeam(index));
+        teamPicker.appendChild(button);
+      });
+    }
+
+    function renderGuesses() {
+      if (!state.guesses.length) {
+        guessList.innerHTML = '<div class="empty">아직 입력이 없습니다.</div>';
+        return;
+      }
+      guessList.innerHTML = "";
+      state.guesses.slice(0, 28).forEach((guess) => {
+        const item = document.createElement("div");
+        item.className = `guess-item${guess.correct ? " correct" : ""}`;
+        item.innerHTML = `
+          <div class="guess-top">
+            <span class="guess-word">${guess.text}</span>
+            <span class="guess-team">${guess.team}</span>
+          </div>
+          <span class="guess-time">${guess.correct ? "정답" : "오답"} · ${guess.time}</span>
+        `;
+        guessList.appendChild(item);
+      });
+    }
+
+    function renderRounds() {
+      roundCount.textContent = `${state.round}R`;
+      if (!state.rounds.length) {
+        roundList.innerHTML = '<div class="empty">기록 없음</div>';
+        return;
+      }
+      roundList.innerHTML = "";
+      state.rounds.forEach((round) => {
+        const item = document.createElement("div");
+        item.className = "round-item";
+        item.innerHTML = `
+          <span class="round-num">${round.round}</span>
+          <span class="round-word">${round.word}</span>
+          <span class="round-team">${round.team}</span>
+        `;
+        roundList.appendChild(item);
+      });
+    }
+
+    function renderStats() {
+      const pool = filteredWords();
+      const left = pool.filter((item) => !state.usedWords.includes(item.word)).length;
+      deckCount.textContent = `${pool.length}개`;
+      leftCount.textContent = String(left);
+      tryCount.textContent = String(state.guesses.length);
+      hitCount.textContent = String(state.hits);
+      roundCount.textContent = `${state.round}R`;
+    }
+
+    function renderColors() {
+      colorBar.innerHTML = "";
+      palette.forEach((color) => {
+        const button = document.createElement("button");
+        button.className = `swatch${color === state.color ? " active" : ""}`;
+        button.style.background = color;
+        button.title = color;
+        button.addEventListener("click", () => {
+          state.color = color;
+          renderColors();
+        });
+        colorBar.appendChild(button);
+      });
+    }
+
+    function renderTools() {
+      document.querySelectorAll("[data-tool]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tool === state.tool);
+      });
+    }
+
+    function addCustomWords() {
+      const field = document.querySelector("#customWords");
+      const values = field.value.split(/\n|,/).map((word) => word.trim()).filter(Boolean);
+      const existing = new Set(state.words.map((item) => normalize(item.word)));
+      values.forEach((word) => {
+        if (!existing.has(normalize(word))) {
+          state.words.push({ word, category: "custom", level: "보통" });
+          existing.add(normalize(word));
+        }
+      });
+      field.value = "";
+      renderStats();
+      showToast(`${values.length}개 추가`);
+    }
+
+    function shuffleDeck() {
+      state.usedWords = [];
+      renderStats();
+      showToast("다시 섞음");
+    }
+
+    document.querySelectorAll("[data-tool]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.tool = button.dataset.tool;
+        renderTools();
+      });
+    });
+
+    document.querySelector("#undoBtn").addEventListener("click", undo);
+    document.querySelector("#clearBtn").addEventListener("click", () => clearCanvas(true));
+    document.querySelector("#newRoundBtn").addEventListener("click", newRound);
+    document.querySelector("#revealBtn").addEventListener("click", toggleReveal);
+    document.querySelector("#correctBtn").addEventListener("click", () => markCorrect("버튼"));
+    document.querySelector("#skipBtn").addEventListener("click", skipRound);
+    document.querySelector("#timerStartBtn").addEventListener("click", startTimer);
+    document.querySelector("#timerResetBtn").addEventListener("click", resetTimer);
+    document.querySelector("#shuffleBtn").addEventListener("click", shuffleDeck);
+    document.querySelector("#addWordsBtn").addEventListener("click", addCustomWords);
+    categorySelect.addEventListener("change", () => {
+      renderStats();
+      categoryPill.textContent = categoryName(categorySelect.value);
+    });
+
+    document.querySelector("#guessForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.querySelector("#guessInput");
+      submitGuess(input.value);
+      input.value = "";
+      input.focus();
+    });
+
+    sizeRange.addEventListener("input", () => {
+      state.size = Number(sizeRange.value);
+      sizeOut.textContent = String(state.size);
+    });
+
+    canvas.addEventListener("pointerdown", startDraw);
+    canvas.addEventListener("pointermove", moveDraw);
+    canvas.addEventListener("pointerup", endDraw);
+    canvas.addEventListener("pointercancel", endDraw);
+    canvas.addEventListener("pointerleave", (event) => {
+      if (state.drawing && event.buttons === 0) endDraw(event);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.target.matches("input, textarea")) return;
+      if (event.key === " ") {
+        event.preventDefault();
+        startTimer();
+      }
+      if (event.key.toLowerCase() === "n") newRound();
+      if (event.key.toLowerCase() === "v") toggleReveal();
+    });
+
+    loadTeams();
+    setupCanvas();
+    renderTeams();
+    renderPicker();
+    renderRounds();
+    renderColors();
+    renderTools();
+    updateWordDisplay();
+    updateTimer();
+    renderStats();
+  </script>
+</body>
+</html>

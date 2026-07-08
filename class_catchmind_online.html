@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>그림으로 맞혀요 온라인</title>
+  <style>
+    :root {
+      --bg: #eaf3dd;
+      --cream: #fff8e7;
+      --paper: #ffffff;
+      --chalk: #245b2b;
+      --chalk-dark: #163c1d;
+      --wood: #9a5f2f;
+      --ink: #222327;
+      --muted: #68727f;
+      --line: #ded6c4;
+      --orange: #ff8442;
+      --teal: #58beb8;
+      --blue: #3776d6;
+      --green: #1c9b72;
+      --red: #de4d57;
+      --yellow: #e8b33f;
+      --violet: #7357d8;
+      --shadow: 0 22px 54px rgba(48, 42, 28, .16);
+      color-scheme: light;
+      font-family: "Segoe UI", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 8%, rgba(117, 173, 79, .22), transparent 18%),
+        radial-gradient(circle at 88% 12%, rgba(255, 132, 66, .18), transparent 16%),
+        linear-gradient(180deg, #dff0d5 0%, #fff2c8 100%);
+      overflow: hidden;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 2px solid #d8c9aa;
+      border-radius: 8px;
+      background: #fffdf7;
+      color: var(--ink);
+    }
+
+    input,
+    select {
+      min-height: 44px;
+      padding: 9px 11px;
+    }
+
+    textarea {
+      min-height: 112px;
+      padding: 10px 12px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .screen {
+      display: none;
+      min-height: calc(100vh - 36px);
+    }
+
+    .screen.active {
+      display: grid;
+    }
+
+    .center-screen {
+      place-items: center;
+    }
+
+    .home-card,
+    .form-card,
+    .lobby-card {
+      width: min(460px, calc(100vw - 32px));
+      border: 3px solid #caa96a;
+      border-radius: 18px;
+      background: rgba(255, 253, 244, .94);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .chalkboard {
+      display: grid;
+      place-items: center;
+      min-height: 156px;
+      margin-bottom: 16px;
+      border: 9px solid var(--wood);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 24% 28%, rgba(255, 255, 255, .09), transparent 22%),
+        linear-gradient(135deg, var(--chalk), var(--chalk-dark));
+      color: #fff;
+      box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .08), 0 10px 20px rgba(0, 0, 0, .18);
+      text-align: center;
+    }
+
+    .chalkboard h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 48px);
+      line-height: 1.05;
+      letter-spacing: 0;
+      text-shadow: 0 3px 0 rgba(0, 0, 0, .20);
+    }
+
+    .chalkboard p {
+      margin: 10px 0 0;
+      color: #d9f0ac;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .big-btn,
+    .small-btn,
+    .tool-btn,
+    .chip-btn {
+      min-height: 48px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .12), 0 6px 12px rgba(43, 34, 18, .12);
+      font-weight: 900;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+
+    .big-btn {
+      min-height: 66px;
+      padding: 12px 18px;
+      font-size: 18px;
+    }
+
+    .big-btn.primary,
+    .small-btn.primary {
+      background: var(--orange);
+      color: #fff;
+    }
+
+    .big-btn.secondary,
+    .small-btn.secondary {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .big-btn.good,
+    .small-btn.good {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .big-btn.warn,
+    .small-btn.warn {
+      background: var(--yellow);
+      color: #4f3710;
+    }
+
+    .big-btn.danger,
+    .small-btn.danger {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .big-btn:active,
+    .small-btn:active,
+    .tool-btn:active,
+    .chip-btn:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12), 0 3px 8px rgba(43, 34, 18, .12);
+    }
+
+    .small-btn {
+      min-height: 42px;
+      padding: 8px 14px;
+      font-size: 14px;
+    }
+
+    .card-title {
+      margin: 0 0 12px;
+      font-size: 27px;
+      line-height: 1.15;
+      letter-spacing: 0;
+      text-align: center;
+    }
+
+    .subtle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      color: #5b503d;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .stat {
+      display: grid;
+      min-height: 64px;
+      place-items: center;
+      border-radius: 12px;
+      background: #f7edcc;
+      text-align: center;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .stat strong {
+      font-size: 22px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .room-code {
+      display: grid;
+      min-height: 116px;
+      place-items: center;
+      border: 3px dashed #d4ad5d;
+      border-radius: 16px;
+      background: #fff2ca;
+      color: var(--chalk-dark);
+      font-size: clamp(44px, 12vw, 72px);
+      font-weight: 950;
+      letter-spacing: 7px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .player-list {
+      display: grid;
+      gap: 8px;
+      max-height: 210px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .player-pill {
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 44px;
+      padding: 7px 9px;
+      border: 2px solid #ecdcbf;
+      border-radius: 999px;
+      background: #fffdf7;
+    }
+
+    .avatar {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--teal);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .player-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 900;
+    }
+
+    .score {
+      color: var(--blue);
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .game-screen {
+      grid-template-columns: minmax(250px, 300px) minmax(440px, 1fr) minmax(260px, 320px);
+      gap: 12px;
+      min-height: calc(100vh - 36px);
+    }
+
+    .game-panel,
+    .draw-panel,
+    .chat-panel {
+      min-height: 0;
+      border: 3px solid #caa96a;
+      border-radius: 18px;
+      background: rgba(255, 253, 244, .94);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .game-panel,
+    .chat-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .panel-head {
+      padding: 14px;
+      border-bottom: 2px solid #ead9b9;
+      background: #fff5d8;
+    }
+
+    .panel-head h2 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.2;
+    }
+
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .panel-body {
+      min-height: 0;
+      overflow: auto;
+      padding: 14px;
+    }
+
+    .panel-foot {
+      padding: 12px 14px;
+      border-top: 2px solid #ead9b9;
+      background: #fffaf0;
+    }
+
+    .round-card {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, rgba(36, 91, 43, .94), rgba(22, 60, 29, .96)),
+        var(--chalk);
+      color: #fff;
+    }
+
+    .round-label {
+      color: #d9f0ac;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .secret-word {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 30px;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .timer {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 14px;
+      background: #f7edcc;
+    }
+
+    .timer-circle {
+      display: grid;
+      width: 72px;
+      height: 72px;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--green) var(--timer-deg, 360deg), #e6d7b5 0);
+    }
+
+    .timer-inner {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      place-items: center;
+      border-radius: 50%;
+      background: #fffaf0;
+      font-size: 22px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .timer-text strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .timer-text span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .draw-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .draw-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 2px solid #ead9b9;
+      background: #fffaf0;
+    }
+
+    .draw-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 950;
+    }
+
+    .role-badge {
+      display: inline-grid;
+      min-height: 30px;
+      align-items: center;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: #e7f5ec;
+      color: #12613f;
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 0;
+      background:
+        linear-gradient(45deg, #f4f2ee 25%, transparent 25%),
+        linear-gradient(-45deg, #f4f2ee 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f4f2ee 75%),
+        linear-gradient(-45deg, transparent 75%, #f4f2ee 75%);
+      background-color: #fff;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      background-size: 24px 24px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .canvas-lock {
+      position: absolute;
+      inset: auto 12px 12px 12px;
+      display: none;
+      min-height: 42px;
+      place-items: center;
+      border: 2px solid #ead9b9;
+      border-radius: 999px;
+      background: rgba(255, 250, 240, .92);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+      pointer-events: none;
+    }
+
+    .canvas-lock.show {
+      display: grid;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) 168px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-top: 2px solid #ead9b9;
+      background: #fffaf0;
+    }
+
+    .tools,
+    .colors {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .tool-btn {
+      display: grid;
+      width: 42px;
+      min-height: 42px;
+      place-items: center;
+      border-radius: 12px;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12);
+      font-weight: 950;
+    }
+
+    .tool-btn.active {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      border: 3px solid #fffaf0;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px #d8c9aa;
+      flex: 0 0 auto;
+    }
+
+    .swatch.active {
+      box-shadow: 0 0 0 3px var(--blue);
+    }
+
+    .size-row {
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      accent-color: var(--orange);
+    }
+
+    .size-value {
+      display: grid;
+      min-height: 32px;
+      place-items: center;
+      border-radius: 8px;
+      background: #f7edcc;
+      color: #705730;
+      font-size: 12px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .chat-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chat-item {
+      padding: 9px 10px;
+      border: 2px solid #ead9b9;
+      border-radius: 12px;
+      background: #fffdf7;
+    }
+
+    .chat-item.correct {
+      border-color: rgba(28, 155, 114, .5);
+      background: #e8f7ef;
+    }
+
+    .chat-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .chat-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .chat-time {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .chat-text {
+      margin-top: 4px;
+      overflow-wrap: anywhere;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .answer-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 76px;
+      gap: 8px;
+    }
+
+    .empty {
+      display: grid;
+      min-height: 110px;
+      place-items: center;
+      border: 2px dashed #d8c9aa;
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 20;
+      max-width: min(520px, calc(100vw - 32px));
+      padding: 12px 16px;
+      border: 3px solid #caa96a;
+      border-radius: 999px;
+      background: rgba(255, 253, 244, .96);
+      box-shadow: var(--shadow);
+      transform: translate(-50%, 16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      font-size: 14px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .confetti {
+      position: fixed;
+      top: -24px;
+      width: 9px;
+      height: 16px;
+      border-radius: 4px;
+      pointer-events: none;
+      animation: confetti 1200ms ease-out forwards;
+      z-index: 18;
+    }
+
+    @keyframes confetti {
+      0% {
+        opacity: 0;
+        transform: translateY(0) rotate(0deg);
+      }
+      14% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(82vh) rotate(320deg);
+      }
+    }
+
+    @media (max-width: 1120px) {
+      body {
+        overflow: auto;
+      }
+
+      .game-screen {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(640px, 1fr) auto;
+      }
+
+      .game-panel,
+      .chat-panel {
+        min-height: 360px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        padding: 10px;
+      }
+
+      .screen {
+        min-height: calc(100vh - 20px);
+      }
+
+      .home-card,
+      .form-card,
+      .lobby-card {
+        padding: 14px;
+      }
+
+      .two-col,
+      .stat-row,
+      .mini-grid,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .colors,
+      .tools {
+        flex-wrap: wrap;
+      }
+
+      .answer-form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="screen center-screen active" id="homeScreen">
+      <div class="home-card">
+        <div class="chalkboard">
+          <div>
+            <h1>그림으로 맞혀요</h1>
+            <p>반 전체가 들어오는 그림 퀴즈</p>
+          </div>
+        </div>
+        <div class="stack">
+          <button class="big-btn primary" id="goTeacherBtn">교사로 방 만들기</button>
+          <button class="big-btn secondary" id="goStudentBtn">학생으로 참여하기</button>
+          <p class="subtle">Firebase 설정값을 연결했습니다. Realtime Database가 준비되면 여러 기기에서 같은 방 코드로 접속할 수 있고, 로컬 탭 테스트도 함께 지원합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen center-screen" id="teacherSetupScreen">
+      <div class="form-card">
+        <h2 class="card-title">교사 설정</h2>
+        <div class="stack">
+          <div class="stat-row">
+            <div class="stat"><span>방 코드</span><strong>4자리</strong></div>
+            <div class="stat"><span>참여</span><strong>실시간</strong></div>
+            <div class="stat"><span>도구</span><strong>그림판</strong></div>
+          </div>
+          <div class="field">
+            <label for="teacherName">선생님 이름</label>
+            <input id="teacherName" type="text" maxlength="14" placeholder="예: 민영쌤">
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="roundTime">라운드 시간</label>
+              <select id="roundTime">
+                <option value="90">1분 30초</option>
+                <option value="120" selected>2분</option>
+                <option value="180">3분</option>
+                <option value="240">4분</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="answerMode">정답 처리</label>
+              <select id="answerMode">
+                <option value="auto" selected>자동 채점</option>
+                <option value="manual">교사 확인</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="wordList">정답 단어 목록</label>
+            <textarea id="wordList" placeholder="사과, 고양이, 학교 ...">사과, 고양이, 학교, 우산, 축구공, 떡볶이, 도서관, 로봇, 바닷가, 생일파티, 우주선, 무지개</textarea>
+          </div>
+          <button class="big-btn primary" id="createRoomBtn">방 만들기</button>
+          <div class="mini-grid">
+            <button class="small-btn" data-nav="home">처음으로</button>
+            <button class="small-btn" data-nav="home">뒤로</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen center-screen" id="studentJoinScreen">
+      <div class="form-card">
+        <h2 class="card-title">학생 참여</h2>
+        <div class="stack">
+          <div class="field">
+            <label for="studentName">이름</label>
+            <input id="studentName" type="text" maxlength="14" placeholder="예: 지우">
+          </div>
+          <div class="field">
+            <label for="studentCode">방 코드</label>
+            <input id="studentCode" type="text" maxlength="4" placeholder="예: A1B2">
+          </div>
+          <button class="big-btn secondary" id="joinRoomBtn">참여하기</button>
+          <button class="small-btn" data-nav="home">처음으로</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen center-screen" id="lobbyScreen">
+      <div class="lobby-card">
+        <h2 class="card-title">대기실</h2>
+        <div class="stack">
+          <p class="subtle" id="lobbyGuide">학생들에게 이 코드를 알려주세요.</p>
+          <div class="room-code" id="roomCodeText">----</div>
+          <div class="stat-row">
+            <div class="stat"><span>선생님</span><strong id="lobbyTeacherName">-</strong></div>
+            <div class="stat"><span>학생</span><strong id="lobbyStudentCount">0</strong></div>
+            <div class="stat"><span>시간</span><strong id="lobbyDuration">120</strong></div>
+          </div>
+          <div class="player-list" id="lobbyPlayers"></div>
+          <div class="mini-grid" id="lobbyTeacherActions">
+            <button class="big-btn good" id="startGameBtn">게임 시작</button>
+            <button class="big-btn warn" id="copyLinkBtn">링크 복사</button>
+          </div>
+          <button class="small-btn" data-nav="home">처음으로</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen game-screen" id="gameScreen">
+      <aside class="game-panel">
+        <div class="panel-head">
+          <h2>진행판</h2>
+          <p id="roomMiniInfo">방 코드 ----</p>
+        </div>
+        <div class="panel-body">
+          <div class="round-card">
+            <span class="round-label" id="roundLabel">대기 중</span>
+            <div class="secret-word" id="secretWord">문제 없음</div>
+          </div>
+          <div class="timer">
+            <div class="timer-circle" id="timerCircle">
+              <div class="timer-inner" id="timerText">0</div>
+            </div>
+            <div class="timer-text">
+              <strong id="timerTitle">남은 시간</strong>
+              <span id="timerSub">라운드가 시작되면 시간이 흐릅니다.</span>
+            </div>
+          </div>
+          <div class="player-list" id="scoreList"></div>
+        </div>
+        <div class="panel-foot">
+          <div class="stack" id="teacherControls">
+            <div class="mini-grid">
+              <button class="small-btn good" id="nextRoundBtn">다음 문제</button>
+              <button class="small-btn warn" id="revealAnswerBtn">정답 보기</button>
+            </div>
+            <div class="mini-grid">
+              <button class="small-btn danger" id="clearCanvasBtn">전체 지우기</button>
+              <button class="small-btn" id="backLobbyBtn">대기실</button>
+            </div>
+          </div>
+          <p class="subtle" id="studentNotice">정답을 입력하면 자동으로 채점됩니다.</p>
+        </div>
+      </aside>
+
+      <section class="draw-panel">
+        <div class="draw-top">
+          <div class="draw-title" id="drawTitle">그림판</div>
+          <div class="role-badge" id="roleBadge">교사</div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="drawCanvas" width="1400" height="900"></canvas>
+          <div class="canvas-lock" id="canvasLock">학생 화면에서는 그림을 볼 수만 있습니다.</div>
+        </div>
+        <div class="toolbar" id="toolbar">
+          <div class="tools">
+            <button class="tool-btn active" data-tool="pen" title="펜">P</button>
+            <button class="tool-btn" data-tool="marker" title="마커">M</button>
+            <button class="tool-btn" data-tool="eraser" title="지우개">E</button>
+          </div>
+          <div class="colors" id="colorBar"></div>
+          <div class="size-row">
+            <input id="sizeRange" type="range" min="3" max="36" value="9">
+            <output class="size-value" id="sizeValue">9</output>
+          </div>
+        </div>
+      </section>
+
+      <aside class="chat-panel">
+        <div class="panel-head">
+          <h2>정답 입력</h2>
+          <p id="chatGuide">학생 답변이 여기에 쌓입니다.</p>
+        </div>
+        <div class="panel-body">
+          <div class="chat-list" id="chatList"></div>
+        </div>
+        <div class="panel-foot">
+          <form class="answer-form" id="answerForm">
+            <input id="answerInput" type="text" autocomplete="off" placeholder="정답 입력">
+            <button class="small-btn secondary" type="submit">전송</button>
+          </form>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="toast" id="toast">알림</div>
+
+  <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-database-compat.js"></script>
+  <script>
+    const screens = {
+      home: document.querySelector("#homeScreen"),
+      teacher: document.querySelector("#teacherSetupScreen"),
+      student: document.querySelector("#studentJoinScreen"),
+      lobby: document.querySelector("#lobbyScreen"),
+      game: document.querySelector("#gameScreen")
+    };
+
+    const canvas = document.querySelector("#drawCanvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const channel = "BroadcastChannel" in window ? new BroadcastChannel("class-catchmind-online") : null;
+    const storagePrefix = "classCatchOnline.room.";
+    const firebaseConfig = {
+      apiKey: "AIzaSyDrZ5KDbkfR3hDj9U0lI2VHhgzNXNE_1cU",
+      authDomain: "school-debate-1.firebaseapp.com",
+      databaseURL: "https://school-debate-1-default-rtdb.firebaseio.com",
+      projectId: "school-debate-1",
+      storageBucket: "school-debate-1.firebasestorage.app",
+      messagingSenderId: "711490484046",
+      appId: "1:711490484046:web:1fa6e1400c1451d776101f"
+    };
+    const firebaseState = {
+      app: null,
+      db: null,
+      roomRef: null,
+      roomHandler: null,
+      watchCode: null,
+      warned: false
+    };
+    const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
+    const fallbackWords = ["사과", "고양이", "학교", "우산", "축구공", "떡볶이", "도서관", "로봇", "바닷가", "생일파티", "우주선", "무지개"];
+
+    const state = {
+      role: null,
+      roomCode: null,
+      clientId: getClientId(),
+      name: "",
+      room: null,
+      tool: "pen",
+      color: palette[0],
+      size: 9,
+      drawing: false,
+      inputMode: null,
+      currentStroke: null,
+      lastPoint: null,
+      lastStrokeCount: -1,
+      lastClearId: null,
+      lastToastKey: "",
+      timerTick: null,
+      heartbeatTick: null,
+      roomTick: null
+    };
+
+    initFirebase();
+
+    function initFirebase() {
+      if (!window.firebase || !firebaseConfig.apiKey) return;
+      try {
+        firebaseState.app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+        firebaseState.db = firebase.database();
+      } catch (error) {
+        console.warn("Firebase init failed", error);
+      }
+    }
+
+    function hasFirebase() {
+      return Boolean(firebaseState.db);
+    }
+
+    function firebaseRoomRef(code = state.roomCode) {
+      if (!hasFirebase() || !code) return null;
+      return firebaseState.db.ref(`rooms/${String(code).toUpperCase()}`);
+    }
+
+    function reportFirebaseError(action, error) {
+      console.warn(`Firebase ${action} failed`, error);
+      if (firebaseState.warned) return;
+      firebaseState.warned = true;
+      showToast("Firebase DB가 아직 준비되지 않아 로컬 테스트로 진행합니다.", "firebase-offline");
+    }
+
+    function saveRemoteRoom(room) {
+      const ref = firebaseRoomRef(room?.code);
+      if (!ref) return;
+      ref.set(room).catch((error) => reportFirebaseError("save", error));
+    }
+
+    async function fetchRemoteRoom(code) {
+      const ref = firebaseRoomRef(code);
+      if (!ref) return null;
+      try {
+        const snapshot = await ref.once("value");
+        return normalizeRoom(snapshot.val());
+      } catch (error) {
+        reportFirebaseError("read", error);
+        return null;
+      }
+    }
+
+    function stopFirebaseWatch() {
+      if (firebaseState.roomRef && firebaseState.roomHandler) {
+        firebaseState.roomRef.off("value", firebaseState.roomHandler);
+      }
+      firebaseState.roomRef = null;
+      firebaseState.roomHandler = null;
+      firebaseState.watchCode = null;
+    }
+
+    function startFirebaseWatch(code = state.roomCode) {
+      const normalized = String(code || "").toUpperCase();
+      if (!normalized || !hasFirebase()) return;
+      if (firebaseState.watchCode === normalized) return;
+      stopFirebaseWatch();
+      const ref = firebaseRoomRef(normalized);
+      const handler = (snapshot) => {
+        const room = normalizeRoom(snapshot.val());
+        if (!room?.code) return;
+        const local = readRoom(room.code);
+        if (local && Number(local.updatedAt || 0) > Number(room.updatedAt || 0)) return;
+        localStorage.setItem(roomKey(room.code), JSON.stringify(room));
+        state.room = room;
+        render();
+      };
+      firebaseState.roomRef = ref;
+      firebaseState.roomHandler = handler;
+      firebaseState.watchCode = normalized;
+      ref.on("value", handler, (error) => reportFirebaseError("watch", error));
+    }
+
+    function getClientId() {
+      const random = crypto?.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Math.random().toString(36).slice(2);
+      return `c${Date.now().toString(36)}${random.slice(0, 10)}`;
+    }
+
+    function showScreen(name) {
+      Object.entries(screens).forEach(([key, element]) => {
+        element.classList.toggle("active", key === name);
+      });
+    }
+
+    function normalize(value) {
+      return String(value || "").toLowerCase().replace(/[\s\W_]+/g, "");
+    }
+
+    function clampName(value, fallback) {
+      const trimmed = String(value || "").trim().slice(0, 14);
+      return trimmed || fallback;
+    }
+
+    function splitWords(value) {
+      const words = String(value || "")
+        .split(/[\n,]+/)
+        .map((word) => word.trim())
+        .filter(Boolean);
+      return words.length ? [...new Set(words)] : [...fallbackWords];
+    }
+
+    function makeRoomCode() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let i = 0; i < 4; i += 1) code += chars[Math.floor(Math.random() * chars.length)];
+      if (localStorage.getItem(storagePrefix + code)) return makeRoomCode();
+      return code;
+    }
+
+    function roomKey(code = state.roomCode) {
+      return storagePrefix + String(code || "").toUpperCase();
+    }
+
+    function normalizeRoom(room) {
+      if (!room || typeof room !== "object" || !room.code) return null;
+      room.code = String(room.code).toUpperCase();
+      room.words = Array.isArray(room.words) ? room.words : [];
+      room.used = Array.isArray(room.used) ? room.used : [];
+      room.strokes = Array.isArray(room.strokes) ? room.strokes : [];
+      room.guesses = Array.isArray(room.guesses) ? room.guesses : [];
+      room.players = room.players && typeof room.players === "object" ? room.players : {};
+      room.duration = Number(room.duration) || 120;
+      room.round = Number(room.round) || 0;
+      room.currentWordIndex = Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1;
+      room.clearId = Number(room.clearId) || 0;
+      room.status = room.status || "lobby";
+      return room;
+    }
+
+    function saveRoom(room, broadcast = true) {
+      room = normalizeRoom(room);
+      if (!room?.code) return;
+      room.updatedAt = Date.now();
+      localStorage.setItem(roomKey(room.code), JSON.stringify(room));
+      state.room = room;
+      if (broadcast && channel) channel.postMessage({ type: "room", code: room.code, updatedAt: room.updatedAt });
+      saveRemoteRoom(room);
+      render();
+    }
+
+    function readRoom(code = state.roomCode) {
+      if (!code) return null;
+      try {
+        return normalizeRoom(JSON.parse(localStorage.getItem(roomKey(code)) || "null"));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function mutateRoom(mutator) {
+      const room = readRoom();
+      if (!room) {
+        showToast("방을 찾을 수 없습니다.");
+        return null;
+      }
+      mutator(room);
+      saveRoom(room);
+      return room;
+    }
+
+    function showToast(message, key = "") {
+      if (key && state.lastToastKey === key) return;
+      if (key) state.lastToastKey = key;
+      const toast = document.querySelector("#toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1500);
+    }
+
+    function formatTime(sec) {
+      const safe = Math.max(0, Math.floor(sec));
+      const min = Math.floor(safe / 60);
+      const rest = String(safe % 60).padStart(2, "0");
+      return `${min}:${rest}`;
+    }
+
+    function roomPlayers(room = state.room) {
+      if (!room) return [];
+      return Object.values(room.players || {}).sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.joinedAt - b.joinedAt;
+      });
+    }
+
+    function activePlayers(room = state.room) {
+      const now = Date.now();
+      return roomPlayers(room).filter((player) => now - player.lastSeen < 12000);
+    }
+
+    function currentRemaining(room = state.room) {
+      if (!room || room.status !== "game" || !room.roundStartedAt) return room?.duration || 0;
+      const elapsed = Math.floor((Date.now() - room.roundStartedAt) / 1000);
+      return Math.max(0, room.duration - elapsed);
+    }
+
+    function currentWord(room = state.room) {
+      if (!room || !room.words.length || room.currentWordIndex < 0) return "";
+      return room.words[room.currentWordIndex] || "";
+    }
+
+    function createRoom() {
+      const teacherName = clampName(document.querySelector("#teacherName").value, "선생님");
+      const duration = Number(document.querySelector("#roundTime").value);
+      const answerMode = document.querySelector("#answerMode").value;
+      const words = splitWords(document.querySelector("#wordList").value);
+      const code = makeRoomCode();
+      const now = Date.now();
+      const room = {
+        code,
+        teacherId: state.clientId,
+        teacherName,
+        duration,
+        answerMode,
+        words,
+        used: [],
+        status: "lobby",
+        round: 0,
+        currentWordIndex: -1,
+        roundStartedAt: null,
+        solvedBy: null,
+        reveal: false,
+        clearId: 0,
+        strokes: [],
+        guesses: [],
+        players: {},
+        createdAt: now,
+        updatedAt: now
+      };
+      state.role = "teacher";
+      state.roomCode = code;
+      state.name = teacherName;
+      saveRoom(room);
+      startRoomLoops();
+      showScreen("lobby");
+      showToast("방을 만들었습니다.");
+    }
+
+    async function joinRoom() {
+      const code = document.querySelector("#studentCode").value.trim().toUpperCase();
+      const name = clampName(document.querySelector("#studentName").value, "학생");
+      let room = readRoom(code);
+      if (!room) {
+        room = await fetchRemoteRoom(code);
+        if (room?.code) localStorage.setItem(roomKey(room.code), JSON.stringify(room));
+      }
+      if (!room) {
+        showToast("방 코드를 다시 확인해주세요.");
+        return;
+      }
+      const now = Date.now();
+      room.players[state.clientId] = room.players[state.clientId] || {
+        id: state.clientId,
+        name,
+        score: 0,
+        joinedAt: now,
+        lastSeen: now
+      };
+      room.players[state.clientId].name = name;
+      room.players[state.clientId].lastSeen = now;
+      state.role = "student";
+      state.roomCode = code;
+      state.name = name;
+      saveRoom(room);
+      startRoomLoops();
+      showScreen(room.status === "game" ? "game" : "lobby");
+      showToast("방에 참여했습니다.");
+    }
+
+    function heartbeat() {
+      if (state.role !== "student" || !state.roomCode) return;
+      mutateRoom((room) => {
+        const player = room.players[state.clientId];
+        if (player) {
+          player.lastSeen = Date.now();
+          player.name = state.name;
+        }
+      });
+    }
+
+    function startRoomLoops() {
+      clearInterval(state.heartbeatTick);
+      clearInterval(state.roomTick);
+      clearInterval(state.timerTick);
+      startFirebaseWatch();
+      state.roomTick = setInterval(() => {
+        const room = readRoom();
+        if (room) {
+          state.room = room;
+          render();
+        }
+      }, 500);
+      state.timerTick = setInterval(renderTimer, 250);
+      if (state.role === "student") {
+        state.heartbeatTick = setInterval(heartbeat, 2500);
+        heartbeat();
+      }
+    }
+
+    function nextRound() {
+      mutateRoom((room) => {
+        const available = room.words.map((word, index) => ({ word, index })).filter((item) => !room.used.includes(item.word));
+        const pool = available.length ? available : room.words.map((word, index) => ({ word, index }));
+        if (!available.length) room.used = [];
+        const picked = pool[Math.floor(Math.random() * pool.length)];
+        room.status = "game";
+        room.round += 1;
+        room.currentWordIndex = picked.index;
+        room.used.push(picked.word);
+        room.roundStartedAt = Date.now();
+        room.solvedBy = null;
+        room.reveal = false;
+        room.clearId += 1;
+        room.strokes = [];
+        room.guesses = [];
+      });
+      resetCanvas();
+      showScreen("game");
+      showToast("새 문제가 시작됐습니다.");
+    }
+
+    function revealAnswer() {
+      mutateRoom((room) => {
+        room.reveal = true;
+      });
+    }
+
+    function backToLobby() {
+      mutateRoom((room) => {
+        room.status = "lobby";
+      });
+      showScreen("lobby");
+    }
+
+    function clearCanvasForRoom() {
+      mutateRoom((room) => {
+        room.clearId += 1;
+        room.strokes = [];
+      });
+      resetCanvas();
+      showToast("그림판을 비웠습니다.");
+    }
+
+    function submitAnswer(event) {
+      event.preventDefault();
+      const input = document.querySelector("#answerInput");
+      const text = input.value.trim();
+      if (!text || !state.room || state.role !== "student") return;
+      input.value = "";
+      mutateRoom((room) => {
+        const word = currentWord(room);
+        const player = room.players[state.clientId];
+        const correct = normalize(text) === normalize(word);
+        room.guesses.unshift({
+          id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+          playerId: state.clientId,
+          name: player?.name || state.name,
+          text,
+          correct,
+          at: Date.now()
+        });
+        room.guesses = room.guesses.slice(0, 60);
+        if (correct && !room.solvedBy && room.answerMode === "auto") {
+          room.solvedBy = state.clientId;
+          room.reveal = true;
+          if (player) player.score += Math.max(1, Math.ceil(currentRemaining(room) / 30));
+        }
+      });
+    }
+
+    function resetCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.globalAlpha = .12;
+      ctx.fillStyle = "#68727f";
+      ctx.font = "22px Segoe UI, sans-serif";
+      ctx.fillText("Drawing Quiz", 34, canvas.height - 34);
+      ctx.restore();
+      state.lastStrokeCount = 0;
+    }
+
+    function drawStroke(stroke) {
+      if (!stroke?.points?.length) return;
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+      ctx.globalAlpha = stroke.tool === "marker" ? .24 : 1;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.tool === "marker" ? stroke.size * 2.2 : stroke.size;
+      ctx.beginPath();
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      stroke.points.forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function renderCanvas() {
+      const room = state.room;
+      if (!room) return;
+      if (state.lastClearId !== room.clearId || state.lastStrokeCount > room.strokes.length) {
+        resetCanvas();
+        state.lastClearId = room.clearId;
+      }
+      const start = Math.max(0, state.lastStrokeCount);
+      room.strokes.slice(start).forEach(drawStroke);
+      state.lastStrokeCount = room.strokes.length;
+    }
+
+    function pointFromEvent(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height
+      };
+    }
+
+    function startDraw(event) {
+      if (state.role !== "teacher" || !state.room || state.room.status !== "game") return;
+      if (state.drawing) return;
+      event.preventDefault();
+      state.inputMode = event.type.startsWith("mouse") ? "mouse" : "pointer";
+      if (event.pointerId !== undefined && canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+      state.drawing = true;
+      const point = pointFromEvent(event);
+      state.lastPoint = point;
+      state.currentStroke = {
+        id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+        tool: state.tool,
+        color: state.color,
+        size: state.size,
+        points: [point]
+      };
+    }
+
+    function moveDraw(event) {
+      if (!state.drawing || !state.currentStroke) return;
+      if (state.inputMode === "pointer" && event.type.startsWith("mouse")) return;
+      if (state.inputMode === "mouse" && event.type.startsWith("pointer")) return;
+      const point = pointFromEvent(event);
+      drawStroke({ ...state.currentStroke, points: [state.lastPoint, point] });
+      state.currentStroke.points.push(point);
+      state.lastPoint = point;
+    }
+
+    function endDraw(event) {
+      if (!state.drawing || !state.currentStroke) return;
+      if (state.inputMode === "pointer" && event.type.startsWith("mouse")) return;
+      if (state.inputMode === "mouse" && event.type.startsWith("pointer")) return;
+      state.drawing = false;
+      try {
+        if (event.pointerId !== undefined && canvas.releasePointerCapture) canvas.releasePointerCapture(event.pointerId);
+      } catch (error) {
+        /* Pointer capture may already be released. */
+      }
+      state.inputMode = null;
+      const stroke = state.currentStroke;
+      state.currentStroke = null;
+      mutateRoom((room) => {
+        room.strokes.push(stroke);
+        room.strokes = room.strokes.slice(-260);
+      });
+    }
+
+    function render() {
+      const room = state.room;
+      if (!room) return;
+      if (room.status === "lobby" && screens.game.classList.contains("active")) showScreen("lobby");
+      if (room.status === "game" && screens.lobby.classList.contains("active")) showScreen("game");
+      document.querySelector("#roomCodeText").textContent = room.code;
+      document.querySelector("#lobbyTeacherName").textContent = room.teacherName;
+      document.querySelector("#lobbyStudentCount").textContent = String(activePlayers(room).length);
+      document.querySelector("#lobbyDuration").textContent = `${room.duration}s`;
+      document.querySelector("#lobbyGuide").textContent = state.role === "teacher" ? "학생들에게 이 코드를 알려주세요." : "선생님이 게임을 시작할 때까지 기다립니다.";
+      document.querySelector("#lobbyTeacherActions").style.display = state.role === "teacher" ? "grid" : "none";
+      document.querySelector("#roomMiniInfo").textContent = `방 코드 ${room.code} · ${room.teacherName}`;
+      document.querySelector("#roleBadge").textContent = state.role === "teacher" ? "교사 화면" : "학생 화면";
+      document.querySelector("#canvasLock").classList.toggle("show", state.role !== "teacher");
+      document.querySelector("#toolbar").style.display = state.role === "teacher" ? "grid" : "none";
+      document.querySelector("#teacherControls").style.display = state.role === "teacher" ? "grid" : "none";
+      document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
+      document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" ? "grid" : "none";
+      renderPlayers();
+      renderRound();
+      renderTimer();
+      renderChat();
+      renderCanvas();
+      maybeCelebrate(room);
+    }
+
+    function renderPlayers() {
+      const room = state.room;
+      const lobby = document.querySelector("#lobbyPlayers");
+      const scoreList = document.querySelector("#scoreList");
+      const players = roomPlayers(room);
+      const active = new Set(activePlayers(room).map((player) => player.id));
+      const html = players.length ? players.map((player) => `
+        <div class="player-pill">
+          <span class="avatar">${player.name.slice(0, 1)}</span>
+          <span class="player-name">${escapeHtml(player.name)}${active.has(player.id) ? "" : " (자리비움)"}</span>
+          <span class="score">${player.score}</span>
+        </div>
+      `).join("") : '<div class="empty">아직 참여한 학생이 없습니다.</div>';
+      lobby.innerHTML = html;
+      scoreList.innerHTML = html;
+    }
+
+    function renderRound() {
+      const room = state.room;
+      const word = currentWord(room);
+      const showWord = state.role === "teacher" || room.reveal || room.solvedBy;
+      document.querySelector("#roundLabel").textContent = room.round ? `${room.round}라운드` : "대기 중";
+      document.querySelector("#secretWord").textContent = word ? (showWord ? word : "가려진 제시어") : "문제 없음";
+      document.querySelector("#drawTitle").textContent = word ? (showWord ? `제시어: ${word}` : "그림으로 설명해 주세요") : "게임을 시작해 주세요";
+    }
+
+    function renderTimer() {
+      const room = state.room;
+      if (!room) return;
+      const left = currentRemaining(room);
+      const deg = room.duration ? Math.max(0, left / room.duration) * 360 : 0;
+      const circle = document.querySelector("#timerCircle");
+      document.querySelector("#timerText").textContent = formatTime(left);
+      circle.style.setProperty("--timer-deg", `${deg}deg`);
+      circle.style.background = `conic-gradient(${left <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e6d7b5 0)`;
+      document.querySelector("#timerSub").textContent = room.solvedBy ? "정답이 나왔습니다." : left <= 0 && room.status === "game" ? "시간이 끝났습니다." : "정답이 나오면 점수가 올라갑니다.";
+    }
+
+    function renderChat() {
+      const room = state.room;
+      const list = document.querySelector("#chatList");
+      if (!room.guesses.length) {
+        list.innerHTML = '<div class="empty">아직 정답 입력이 없습니다.</div>';
+        return;
+      }
+      list.innerHTML = room.guesses.map((guess) => `
+        <div class="chat-item${guess.correct ? " correct" : ""}">
+          <div class="chat-top">
+            <span class="chat-name">${escapeHtml(guess.name)}</span>
+            <span class="chat-time">${new Date(guess.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <div class="chat-text">${escapeHtml(guess.text)}${guess.correct ? " · 정답" : ""}</div>
+        </div>
+      `).join("");
+    }
+
+    function maybeCelebrate(room) {
+      if (!room.solvedBy) return;
+      const solvedGuess = room.guesses.find((guess) => guess.correct);
+      const key = `solved-${room.round}-${room.solvedBy}`;
+      if (state.lastToastKey === key) return;
+      showToast(`${solvedGuess?.name || "학생"} 정답`, key);
+      burstConfetti();
+    }
+
+    function burstConfetti() {
+      const colors = ["#ff8442", "#58beb8", "#3776d6", "#1c9b72", "#e8b33f", "#7357d8"];
+      for (let i = 0; i < 42; i += 1) {
+        const piece = document.createElement("i");
+        piece.className = "confetti";
+        piece.style.left = `${Math.random() * 100}%`;
+        piece.style.background = colors[i % colors.length];
+        piece.style.animationDelay = `${Math.random() * 180}ms`;
+        document.body.appendChild(piece);
+        setTimeout(() => piece.remove(), 1400);
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function copyJoinLink() {
+      const url = `${location.origin}${location.pathname}?room=${state.roomCode}`;
+      navigator.clipboard?.writeText(url).then(
+        () => showToast("참여 링크를 복사했습니다."),
+        () => showToast(`참여 링크: ${url}`)
+      );
+    }
+
+    function hydrateFromUrl() {
+      const params = new URLSearchParams(location.search);
+      const code = params.get("room");
+      if (code) {
+        document.querySelector("#studentCode").value = code.toUpperCase();
+        showScreen("student");
+      }
+    }
+
+    function renderColors() {
+      const bar = document.querySelector("#colorBar");
+      bar.innerHTML = "";
+      palette.forEach((color) => {
+        const button = document.createElement("button");
+        button.className = `swatch${color === state.color ? " active" : ""}`;
+        button.style.background = color;
+        button.title = color;
+        button.addEventListener("click", () => {
+          state.color = color;
+          renderColors();
+        });
+        bar.appendChild(button);
+      });
+    }
+
+    function setTool(tool) {
+      state.tool = tool;
+      document.querySelectorAll("[data-tool]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tool === tool);
+      });
+    }
+
+    document.querySelector("#goTeacherBtn").addEventListener("click", () => showScreen("teacher"));
+    document.querySelector("#goStudentBtn").addEventListener("click", () => showScreen("student"));
+    document.querySelectorAll("[data-nav='home']").forEach((button) => button.addEventListener("click", () => showScreen("home")));
+    document.querySelector("#createRoomBtn").addEventListener("click", createRoom);
+    document.querySelector("#joinRoomBtn").addEventListener("click", joinRoom);
+    document.querySelector("#startGameBtn").addEventListener("click", nextRound);
+    document.querySelector("#nextRoundBtn").addEventListener("click", nextRound);
+    document.querySelector("#revealAnswerBtn").addEventListener("click", revealAnswer);
+    document.querySelector("#clearCanvasBtn").addEventListener("click", clearCanvasForRoom);
+    document.querySelector("#backLobbyBtn").addEventListener("click", backToLobby);
+    document.querySelector("#copyLinkBtn").addEventListener("click", copyJoinLink);
+    document.querySelector("#answerForm").addEventListener("submit", submitAnswer);
+    document.querySelector("#sizeRange").addEventListener("input", (event) => {
+      state.size = Number(event.target.value);
+      document.querySelector("#sizeValue").textContent = String(state.size);
+    });
+    document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => setTool(button.dataset.tool)));
+    canvas.addEventListener("pointerdown", startDraw);
+    canvas.addEventListener("pointermove", moveDraw);
+    canvas.addEventListener("pointerup", endDraw);
+    canvas.addEventListener("pointercancel", endDraw);
+    canvas.addEventListener("mousedown", startDraw);
+    canvas.addEventListener("mousemove", moveDraw);
+    window.addEventListener("mouseup", endDraw);
+    canvas.addEventListener("pointerleave", (event) => {
+      if (state.drawing && event.buttons === 0) endDraw(event);
+    });
+    window.addEventListener("storage", (event) => {
+      if (!state.roomCode || event.key !== roomKey()) return;
+      const room = readRoom();
+      if (room) {
+        state.room = room;
+        render();
+      }
+    });
+    channel?.addEventListener("message", (event) => {
+      if (event.data?.code !== state.roomCode) return;
+      const room = readRoom();
+      if (room) {
+        state.room = room;
+        render();
+      }
+    });
+
+    resetCanvas();
+    renderColors();
+    hydrateFromUrl();
+  </script>
+</body>
+</html>
