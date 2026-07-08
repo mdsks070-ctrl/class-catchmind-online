@@ -283,6 +283,30 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .join-link {
+      display: block;
+      overflow: hidden;
+      padding: 9px 11px;
+      border: 2px solid #ecdcbf;
+      border-radius: 10px;
+      background: #fffdf7;
+      color: #5c6672;
+      font-size: 12px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-line {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .round-card .status-line {
+      color: #cde7c0;
+    }
+
     .player-list {
       display: grid;
       gap: 8px;
@@ -810,6 +834,24 @@
               </select>
             </div>
           </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="roundLimit">라운드 수</label>
+              <select id="roundLimit">
+                <option value="3">3라운드</option>
+                <option value="5" selected>5라운드</option>
+                <option value="8">8라운드</option>
+                <option value="12">12라운드</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="soundMode">효과음</label>
+              <select id="soundMode">
+                <option value="on" selected>ON</option>
+                <option value="off">OFF</option>
+              </select>
+            </div>
+          </div>
           <div class="field">
             <label for="wordList">정답 단어 목록</label>
             <textarea id="wordList" placeholder="사과, 고양이, 학교 ...">사과, 고양이, 학교, 우산, 축구공, 떡볶이, 도서관, 로봇, 바닷가, 생일파티, 우주선, 무지개</textarea>
@@ -835,6 +877,7 @@
             <label for="studentCode">방 코드</label>
             <input id="studentCode" type="text" maxlength="4" placeholder="예: A1B2">
           </div>
+          <p class="subtle">태블릿은 가로 모드가 가장 편해요. 정답은 수업에 맞는 표현만 전송됩니다.</p>
           <button class="big-btn secondary" id="joinRoomBtn">참여하기</button>
           <button class="small-btn" data-nav="home">처음으로</button>
         </div>
@@ -847,6 +890,7 @@
         <div class="stack">
           <p class="subtle" id="lobbyGuide">학생들에게 이 코드를 알려주세요.</p>
           <div class="room-code" id="roomCodeText">----</div>
+          <span class="join-link" id="joinLinkText">참여 링크 준비 중</span>
           <div class="stat-row">
             <div class="stat"><span>선생님</span><strong id="lobbyTeacherName">-</strong></div>
             <div class="stat"><span>학생</span><strong id="lobbyStudentCount">0</strong></div>
@@ -871,6 +915,7 @@
         <div class="panel-body">
           <div class="round-card">
             <span class="round-label" id="roundLabel">대기 중</span>
+            <span class="status-line" id="roundProgress">라운드 준비 중</span>
             <div class="secret-word" id="secretWord">문제 없음</div>
           </div>
           <div class="timer">
@@ -976,6 +1021,7 @@
     };
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const fallbackWords = ["사과", "고양이", "학교", "우산", "축구공", "떡볶이", "도서관", "로봇", "바닷가", "생일파티", "우주선", "무지개"];
+    const blockedAnswerPatterns = [/바보/i, /멍청/i, /죽어/i, /꺼져/i];
 
     const state = {
       role: null,
@@ -993,6 +1039,7 @@
       lastStrokeCount: -1,
       lastClearId: null,
       lastToastKey: "",
+      lastSoundKey: "",
       timerTick: null,
       heartbeatTick: null,
       roomTick: null
@@ -1123,9 +1170,12 @@
       room.guesses = Array.isArray(room.guesses) ? room.guesses : [];
       room.players = room.players && typeof room.players === "object" ? room.players : {};
       room.duration = Number(room.duration) || 120;
+      room.roundLimit = Number(room.roundLimit) || 5;
       room.round = Number(room.round) || 0;
       room.currentWordIndex = Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1;
       room.clearId = Number(room.clearId) || 0;
+      room.autoAdvanceAt = Number(room.autoAdvanceAt) || null;
+      room.soundOn = room.soundOn !== false;
       room.status = room.status || "lobby";
       return room;
     }
@@ -1202,10 +1252,55 @@
       return room.words[room.currentWordIndex] || "";
     }
 
+    function joinUrl(code = state.roomCode) {
+      const base = location.origin === "null" ? location.href.split("?")[0] : `${location.origin}${location.pathname}`;
+      return `${base}?room=${String(code || "").toUpperCase()}`;
+    }
+
+    function isBlockedAnswer(text) {
+      const normalized = normalize(text);
+      return blockedAnswerPatterns.some((pattern) => pattern.test(normalized));
+    }
+
+    function playTone(type = "start") {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      try {
+        const audio = new AudioContext();
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        const tones = {
+          start: [523, 659],
+          correct: [659, 880],
+          finish: [440, 660]
+        };
+        const [first, second] = tones[type] || tones.start;
+        oscillator.frequency.setValueAtTime(first, audio.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(second, audio.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.0001, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.18);
+        oscillator.connect(gain).connect(audio.destination);
+        oscillator.start();
+        oscillator.stop(audio.currentTime + 0.2);
+        setTimeout(() => audio.close(), 260);
+      } catch (error) {
+        /* Some browsers block audio until a user gesture. */
+      }
+    }
+
+    function playRoomSound(key, type, room = state.room) {
+      if (!room?.soundOn || state.lastSoundKey === key) return;
+      state.lastSoundKey = key;
+      playTone(type);
+    }
+
     function createRoom() {
       const teacherName = clampName(document.querySelector("#teacherName").value, "선생님");
       const duration = Number(document.querySelector("#roundTime").value);
       const answerMode = document.querySelector("#answerMode").value;
+      const roundLimit = Number(document.querySelector("#roundLimit").value);
+      const soundOn = document.querySelector("#soundMode").value === "on";
       const words = splitWords(document.querySelector("#wordList").value);
       const code = makeRoomCode();
       const now = Date.now();
@@ -1215,12 +1310,15 @@
         teacherName,
         duration,
         answerMode,
+        roundLimit,
+        soundOn,
         words,
         used: [],
         status: "lobby",
         round: 0,
         currentWordIndex: -1,
         roundStartedAt: null,
+        autoAdvanceAt: null,
         solvedBy: null,
         reveal: false,
         clearId: 0,
@@ -1300,8 +1398,20 @@
       }
     }
 
+    function finishRoom(room) {
+      room.status = "finished";
+      room.roundStartedAt = null;
+      room.autoAdvanceAt = null;
+      room.reveal = true;
+      room.solvedBy = room.solvedBy || null;
+    }
+
     function nextRound() {
-      mutateRoom((room) => {
+      const updated = mutateRoom((room) => {
+        if (room.round >= room.roundLimit) {
+          finishRoom(room);
+          return;
+        }
         const available = room.words.map((word, index) => ({ word, index })).filter((item) => !room.used.includes(item.word));
         const pool = available.length ? available : room.words.map((word, index) => ({ word, index }));
         if (!available.length) room.used = [];
@@ -1311,25 +1421,48 @@
         room.currentWordIndex = picked.index;
         room.used.push(picked.word);
         room.roundStartedAt = Date.now();
+        room.autoAdvanceAt = null;
         room.solvedBy = null;
         room.reveal = false;
         room.clearId += 1;
         room.strokes = [];
         room.guesses = [];
       });
-      resetCanvas();
       showScreen("game");
+      if (updated?.status === "finished") {
+        showToast("모든 라운드가 끝났습니다.");
+        playRoomSound(`finish-${updated.round}`, "finish", updated);
+        return;
+      }
+      resetCanvas();
       showToast("새 문제가 시작됐습니다.");
+      playRoomSound(`round-${updated?.round}`, "start", updated);
     }
 
     function revealAnswer() {
       mutateRoom((room) => {
         room.reveal = true;
+        if (room.status === "game" && !room.autoAdvanceAt) room.autoAdvanceAt = Date.now() + 5000;
       });
     }
 
     function backToLobby() {
       mutateRoom((room) => {
+        if (room.status === "finished") {
+          room.round = 0;
+          room.used = [];
+          room.currentWordIndex = -1;
+          room.roundStartedAt = null;
+          room.autoAdvanceAt = null;
+          room.solvedBy = null;
+          room.reveal = false;
+          room.guesses = [];
+          room.strokes = [];
+          room.clearId += 1;
+          Object.values(room.players).forEach((player) => {
+            player.score = 0;
+          });
+        }
         room.status = "lobby";
       });
       showScreen("lobby");
@@ -1349,6 +1482,11 @@
       const input = document.querySelector("#answerInput");
       const text = input.value.trim();
       if (!text || !state.room || state.role !== "student") return;
+      if (isBlockedAnswer(text)) {
+        input.value = "";
+        showToast("수업에 맞지 않는 표현은 전송되지 않습니다.");
+        return;
+      }
       input.value = "";
       mutateRoom((room) => {
         const word = currentWord(room);
@@ -1366,6 +1504,7 @@
         if (correct && !room.solvedBy && room.answerMode === "auto") {
           room.solvedBy = state.clientId;
           room.reveal = true;
+          room.autoAdvanceAt = Date.now() + 5000;
           if (player) player.score += Math.max(1, Math.ceil(currentRemaining(room) / 30));
         }
       });
@@ -1473,6 +1612,7 @@
       if (room.status === "lobby" && screens.game.classList.contains("active")) showScreen("lobby");
       if (room.status === "game" && screens.lobby.classList.contains("active")) showScreen("game");
       document.querySelector("#roomCodeText").textContent = room.code;
+      document.querySelector("#joinLinkText").textContent = joinUrl(room.code);
       document.querySelector("#lobbyTeacherName").textContent = room.teacherName;
       document.querySelector("#lobbyStudentCount").textContent = String(activePlayers(room).length);
       document.querySelector("#lobbyDuration").textContent = `${room.duration}s`;
@@ -1485,6 +1625,8 @@
       document.querySelector("#teacherControls").style.display = state.role === "teacher" ? "grid" : "none";
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
       document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" ? "grid" : "none";
+      document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
+      document.querySelector("#studentNotice").textContent = room.status === "finished" ? "게임이 끝났습니다. 순위를 확인하세요." : "정답을 입력하면 자동으로 채점됩니다. 일부 표현은 전송되지 않습니다.";
       renderPlayers();
       renderRound();
       renderTimer();
@@ -1513,8 +1655,17 @@
     function renderRound() {
       const room = state.room;
       const word = currentWord(room);
+      if (room.status === "finished") {
+        const winner = roomPlayers(room)[0];
+        document.querySelector("#roundLabel").textContent = "최종 결과";
+        document.querySelector("#roundProgress").textContent = `${room.roundLimit}라운드 완료`;
+        document.querySelector("#secretWord").textContent = winner ? `${winner.name} 1등 · ${winner.score}점` : "참여 기록 없음";
+        document.querySelector("#drawTitle").textContent = "게임이 끝났습니다.";
+        return;
+      }
       const showWord = state.role === "teacher" || room.reveal || room.solvedBy;
       document.querySelector("#roundLabel").textContent = room.round ? `${room.round}라운드` : "대기 중";
+      document.querySelector("#roundProgress").textContent = `${Math.min(room.round || 0, room.roundLimit)} / ${room.roundLimit}`;
       document.querySelector("#secretWord").textContent = word ? (showWord ? word : "가려진 제시어") : "문제 없음";
       document.querySelector("#drawTitle").textContent = word ? (showWord ? `제시어: ${word}` : "그림으로 설명해 주세요") : "게임을 시작해 주세요";
     }
@@ -1522,12 +1673,31 @@
     function renderTimer() {
       const room = state.room;
       if (!room) return;
+      if (room.status === "finished") {
+        document.querySelector("#timerText").textContent = "끝";
+        document.querySelector("#timerCircle").style.background = "conic-gradient(var(--blue) 360deg, #e6d7b5 0)";
+        document.querySelector("#timerSub").textContent = "최종 점수를 확인하고 대기실로 돌아갈 수 있습니다.";
+        return;
+      }
       const left = currentRemaining(room);
       const deg = room.duration ? Math.max(0, left / room.duration) * 360 : 0;
       const circle = document.querySelector("#timerCircle");
       document.querySelector("#timerText").textContent = formatTime(left);
       circle.style.setProperty("--timer-deg", `${deg}deg`);
       circle.style.background = `conic-gradient(${left <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e6d7b5 0)`;
+      if (room.status === "game" && left <= 0 && !room.autoAdvanceAt && state.role === "teacher") {
+        mutateRoom((draft) => {
+          draft.reveal = true;
+          draft.autoAdvanceAt = Date.now() + 5000;
+        });
+        return;
+      }
+      if (room.status === "game" && room.autoAdvanceAt) {
+        const nextIn = Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000));
+        document.querySelector("#timerSub").textContent = nextIn ? `${nextIn}초 후 다음 단계로 넘어갑니다.` : "다음 단계로 넘어갑니다.";
+        if (nextIn <= 0 && state.role === "teacher") nextRound();
+        return;
+      }
       document.querySelector("#timerSub").textContent = room.solvedBy ? "정답이 나왔습니다." : left <= 0 && room.status === "game" ? "시간이 끝났습니다." : "정답이 나오면 점수가 올라갑니다.";
     }
 
@@ -1555,6 +1725,7 @@
       const key = `solved-${room.round}-${room.solvedBy}`;
       if (state.lastToastKey === key) return;
       showToast(`${solvedGuess?.name || "학생"} 정답`, key);
+      playRoomSound(`correct-${room.round}-${room.solvedBy}`, "correct", room);
       burstConfetti();
     }
 
@@ -1581,7 +1752,7 @@
     }
 
     function copyJoinLink() {
-      const url = `${location.origin}${location.pathname}?room=${state.roomCode}`;
+      const url = joinUrl(state.roomCode);
       navigator.clipboard?.writeText(url).then(
         () => showToast("참여 링크를 복사했습니다."),
         () => showToast(`참여 링크: ${url}`)
