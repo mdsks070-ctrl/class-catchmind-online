@@ -951,7 +951,7 @@
               <button class="small-btn" id="backLobbyBtn">대기실</button>
             </div>
           </div>
-          <p class="subtle" id="studentNotice">정답을 입력하면 자동으로 채점됩니다.</p>
+          <p class="subtle" id="studentNotice">제한 시간 안에 빨리 맞히면 점수가 더 높습니다.</p>
         </div>
       </aside>
 
@@ -1032,7 +1032,14 @@
     };
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const fallbackWords = ["사과", "고양이", "학교", "우산", "축구공", "떡볶이", "도서관", "로봇", "바닷가", "생일파티", "우주선", "무지개"];
-    const blockedAnswerPatterns = [/바보/i, /멍청/i, /죽어/i, /꺼져/i];
+    const studentIdentityKey = "classCatchOnline.studentIdentity";
+    const blockedAnswerTerms = [
+      "바보", "멍청", "멍청이", "죽어", "꺼져", "닥쳐", "미친", "미쳤",
+      "시발", "씨발", "ㅅㅂ", "ㅆㅂ", "병신", "ㅂㅅ", "븅신", "개새끼", "새끼",
+      "존나", "졸라", "좆", "엿먹", "지랄", "ㅈㄹ", "니애미", "느금마",
+      "fuck", "shit", "bitch", "asshole", "idiot", "stupid"
+    ];
+    const blockedAnswerPatterns = [/시+발+/, /씨+발+/, /병+신+/, /개+새+끼+/, /ㅅ+ㅂ+/, /ㅂ+ㅅ+/, /ㅈ+ㄹ+/];
     const fixedGrade = 6;
 
     const state = {
@@ -1083,7 +1090,7 @@
       console.warn(`Firebase ${action} failed`, error);
       if (firebaseState.warned) return;
       firebaseState.warned = true;
-      showToast("Firebase DB가 아직 준비되지 않아 로컬 테스트로 진행합니다.", "firebase-offline");
+      showToast("Firebase 연결이 불안정해 로컬 상태로 이어갑니다.", "firebase-offline");
     }
 
     function saveRemoteRoom(room) {
@@ -1146,7 +1153,7 @@
     }
 
     function normalize(value) {
-      return String(value || "").toLowerCase().replace(/[\s\W_]+/g, "");
+      return String(value || "").normalize("NFC").toLowerCase().replace(/[^\p{L}\p{N}\u3131-\u318E]+/gu, "");
     }
 
     function clampName(value, fallback) {
@@ -1172,6 +1179,31 @@
         id: `g${fixedGrade}-c${classNo}-n${number}`,
         name: `${fixedGrade}학년 ${classNo}반 ${number}번`
       };
+    }
+
+    function saveStudentIdentity(student) {
+      try {
+        localStorage.setItem(studentIdentityKey, JSON.stringify({
+          grade: student.grade,
+          classNo: student.classNo,
+          number: student.number
+        }));
+      } catch (error) {
+        /* localStorage can be unavailable in private contexts. */
+      }
+    }
+
+    function restoreStudentIdentity() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(studentIdentityKey) || "null");
+        if (!saved || Number(saved.grade) !== fixedGrade) return;
+        const classNo = Number(saved.classNo);
+        const number = Number(saved.number);
+        if (Number.isInteger(classNo) && classNo >= 1 && classNo <= 20) document.querySelector("#studentClass").value = String(classNo);
+        if (Number.isInteger(number) && number >= 1 && number <= 40) document.querySelector("#studentNumber").value = String(number);
+      } catch (error) {
+        /* Ignore malformed saved student data. */
+      }
     }
 
     function currentPlayerId() {
@@ -1248,6 +1280,14 @@
       }
     }
 
+    async function loadLatestRoom(code) {
+      const local = readRoom(code);
+      const remote = await fetchRemoteRoom(code);
+      const latest = remote && (!local || Number(remote.updatedAt || 0) >= Number(local.updatedAt || 0)) ? remote : local;
+      if (latest?.code) localStorage.setItem(roomKey(latest.code), JSON.stringify(latest));
+      return latest;
+    }
+
     function mutateRoom(mutator) {
       const room = readRoom();
       if (!room) {
@@ -1310,7 +1350,21 @@
 
     function isBlockedAnswer(text) {
       const normalized = normalize(text);
-      return blockedAnswerPatterns.some((pattern) => pattern.test(normalized));
+      return blockedAnswerTerms.some((term) => normalized.includes(term)) || blockedAnswerPatterns.some((pattern) => pattern.test(normalized));
+    }
+
+    function calculateRoundScore(room) {
+      const duration = Number(room?.duration) || 1;
+      const left = currentRemaining(room);
+      if (left <= 0) return 0;
+      const speedRatio = Math.max(0, Math.min(1, left / duration));
+      return Math.round(600 + speedRatio * 400);
+    }
+
+    function guessResultText(guess) {
+      if (!guess.correct) return "";
+      const points = Number(guess.points) || 0;
+      return points ? ` · 정답 +${points}` : " · 정답";
     }
 
     function playTone(type = "start") {
@@ -1396,11 +1450,7 @@
         showToast("방 코드는 4자리로 입력해주세요.");
         return;
       }
-      let room = readRoom(code);
-      if (!room) {
-        room = await fetchRemoteRoom(code);
-        if (room?.code) localStorage.setItem(roomKey(room.code), JSON.stringify(room));
-      }
+      const room = await loadLatestRoom(code);
       if (!room) {
         showToast("방 코드를 다시 확인해주세요.");
         return;
@@ -1425,6 +1475,7 @@
       state.roomCode = code;
       state.playerId = student.id;
       state.name = student.name;
+      saveStudentIdentity(student);
       saveRoom(room);
       startRoomLoops();
       showScreen(room.status === "game" ? "game" : "lobby");
@@ -1545,6 +1596,7 @@
       const input = document.querySelector("#answerInput");
       const text = input.value.trim();
       if (!text || !state.room || state.role !== "student") return;
+      if (state.room.status !== "game") return;
       if (isBlockedAnswer(text)) {
         input.value = "";
         showToast("수업에 맞지 않는 표현은 전송되지 않습니다.");
@@ -1555,13 +1607,16 @@
         const word = currentWord(room);
         const playerId = currentPlayerId();
         const player = room.players[playerId];
-        const correct = normalize(text) === normalize(word);
+        const left = currentRemaining(room);
+        const correct = left > 0 && normalize(text) === normalize(word);
+        const points = correct ? calculateRoundScore(room) : 0;
         room.guesses.unshift({
           id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
           playerId,
           name: player?.name || state.name,
           text,
           correct,
+          points,
           at: Date.now()
         });
         room.guesses = room.guesses.slice(0, 60);
@@ -1569,7 +1624,7 @@
           room.solvedBy = playerId;
           room.reveal = true;
           room.autoAdvanceAt = Date.now() + 5000;
-          if (player) player.score += Math.max(1, Math.ceil(currentRemaining(room) / 30));
+          if (player) player.score += points;
         }
       });
     }
@@ -1690,7 +1745,7 @@
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
       document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" ? "grid" : "none";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
-      document.querySelector("#studentNotice").textContent = room.status === "finished" ? "게임이 끝났습니다. 순위를 확인하세요." : "정답을 입력하면 자동으로 채점됩니다. 일부 표현은 전송되지 않습니다.";
+      document.querySelector("#studentNotice").textContent = room.status === "finished" ? "게임이 끝났습니다. 순위를 확인하세요." : "제한 시간 안에 빨리 맞히면 점수가 더 높습니다. 일부 표현은 전송되지 않습니다.";
       renderPlayers();
       renderRound();
       renderTimer();
@@ -1762,7 +1817,7 @@
         if (nextIn <= 0 && state.role === "teacher") nextRound();
         return;
       }
-      document.querySelector("#timerSub").textContent = room.solvedBy ? "정답이 나왔습니다." : left <= 0 && room.status === "game" ? "시간이 끝났습니다." : "정답이 나오면 점수가 올라갑니다.";
+      document.querySelector("#timerSub").textContent = room.solvedBy ? "정답이 나왔습니다." : left <= 0 && room.status === "game" ? "시간이 끝났습니다." : "남은 시간이 많을수록 점수가 높습니다.";
     }
 
     function renderChat() {
@@ -1778,7 +1833,7 @@
             <span class="chat-name">${escapeHtml(guess.name)}</span>
             <span class="chat-time">${new Date(guess.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
-          <div class="chat-text">${escapeHtml(guess.text)}${guess.correct ? " · 정답" : ""}</div>
+          <div class="chat-text">${escapeHtml(guess.text)}${guessResultText(guess)}</div>
         </div>
       `).join("");
     }
@@ -1901,6 +1956,7 @@
 
     resetCanvas();
     renderColors();
+    restoreStudentIdentity();
     hydrateFromUrl();
   </script>
 </body>
