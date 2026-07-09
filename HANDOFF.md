@@ -292,3 +292,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The lobby now shows a QR code for the room join URL. Students who open the QR link skip room-code entry and only enter class/number.
 - Removed the technical Firebase explanation from the home screen.
 - Verified with an automated Chrome E2E test: QR URL included the room code, room-link entry hid the code field, guesser UI hid extra panels, drawer banner was visible, and drawer UI did not show the answer panel.
+
+## 2026-07-09 Answer Area Layout Correction
+
+- Guessing students now see the answer input as a dedicated bottom section below the drawing area, not as a floating overlay on top of the canvas.
+- The canvas height is constrained so the answer field always stays inside the viewport in portrait and landscape.
+- The answer input is larger and visually dominant, with the send button aligned on the same row.
+- Verified with an automated Chrome E2E test: portrait and landscape layouts kept the answer section below the canvas, visible inside the viewport, and focused after submit.
