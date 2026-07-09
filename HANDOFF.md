@@ -344,3 +344,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Any connected game screen that observes an expired `autoAdvanceAt` now attempts `nextRound()`.
 - The existing round/status transaction guards still keep the room from advancing more than once when several screens attempt it together.
 - Verified with an automated Chrome E2E test: teacher created the room and started round 1, two students joined, the teacher page was closed, a guessing student submitted the correct answer, and the remaining student screens advanced to round 2 after the 5-second countdown.
+
+## 2026-07-09 Teacher Prompt Visibility
+
+- Teacher game screens no longer show the current prompt word; they show the hidden-prompt state like the rest of the classroom-facing flow.
+- The admin/operation window now has a `현재 제시어` card that shows the live prompt.
+- The drawing student still sees the prompt so they can draw.
+- Verified with an automated Chrome UI test: teacher view showed `가려진 제시어`, admin view showed `바나나`, and drawer view still showed `바나나`.
