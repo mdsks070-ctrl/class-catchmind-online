@@ -424,6 +424,24 @@
       color: #725000;
     }
 
+    .seal-chip.drawer-chip,
+    .drawer-mark {
+      background: #e7f5ec;
+      color: #12613f;
+    }
+
+    .drawer-mark {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      margin-left: 4px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 950;
+      vertical-align: middle;
+    }
+
     .game-screen {
       grid-template-columns: minmax(250px, 300px) minmax(440px, 1fr) minmax(260px, 320px);
       gap: 12px;
@@ -582,6 +600,35 @@
       font-size: 12px;
       font-weight: 950;
       white-space: nowrap;
+    }
+
+    .drawer-card {
+      display: grid;
+      gap: 4px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 2px solid #ead9b9;
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+
+    .drawer-card span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .drawer-card strong {
+      color: var(--ink);
+      font-size: 17px;
+      font-weight: 950;
+    }
+
+    .drawer-card small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.4;
     }
 
     .canvas-wrap {
@@ -1011,6 +1058,11 @@
             <span class="status-line" id="roundProgress">라운드 준비 중</span>
             <div class="secret-word" id="secretWord">문제 없음</div>
           </div>
+          <div class="drawer-card" id="drawerCard">
+            <span>이번에 그리는 학생</span>
+            <strong id="drawerNameText">아직 없음</strong>
+            <small id="drawerHelpText">라운드가 시작되면 학생 중 한 명이 자동으로 배정됩니다.</small>
+          </div>
           <div class="timer">
             <div class="timer-circle" id="timerCircle">
               <div class="timer-inner" id="timerText">0</div>
@@ -1029,6 +1081,7 @@
               <button class="small-btn warn" id="revealAnswerBtn">정답 보기</button>
             </div>
             <div class="mini-grid">
+              <button class="small-btn secondary" id="changeDrawerBtn">그릴 학생 바꾸기</button>
               <button class="small-btn danger" id="clearCanvasBtn">전체 지우기</button>
               <button class="small-btn" id="backLobbyBtn">대기실</button>
               <button class="small-btn secondary" id="openAdminGameBtn">운영창</button>
@@ -1394,6 +1447,12 @@
       room.roundLimit = Number(room.roundLimit) || 5;
       room.round = Number(room.round) || 0;
       room.currentWordIndex = Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1;
+      room.drawerId = typeof room.drawerId === "string" ? room.drawerId : "";
+      if (room.drawerId && !room.players[room.drawerId]) room.drawerId = "";
+      if (room.status === "game" && !room.drawerId) {
+        const candidates = rosterPlayers(room);
+        if (candidates.length) room.drawerId = candidates[Math.max(0, room.round - 1) % candidates.length].id;
+      }
       room.clearId = Number(room.clearId) || 0;
       room.autoAdvanceAt = Number(room.autoAdvanceAt) || null;
       room.soundOn = room.soundOn !== false;
@@ -1509,6 +1568,62 @@
       return roomPlayers(room).filter((player) => now - player.lastSeen < 12000);
     }
 
+    function rosterPlayers(room = state.room) {
+      if (!room) return [];
+      return Object.values(room.players || {}).sort((a, b) => {
+        if ((a.grade || 999) !== (b.grade || 999)) return (a.grade || 999) - (b.grade || 999);
+        if ((a.classNo || 999) !== (b.classNo || 999)) return (a.classNo || 999) - (b.classNo || 999);
+        if ((a.number || 999) !== (b.number || 999)) return (a.number || 999) - (b.number || 999);
+        return a.joinedAt - b.joinedAt;
+      });
+    }
+
+    function activeRosterPlayers(room = state.room) {
+      const now = Date.now();
+      return rosterPlayers(room).filter((player) => now - player.lastSeen < 12000);
+    }
+
+    function drawerCandidates(room = state.room) {
+      const active = activeRosterPlayers(room);
+      return active.length ? active : rosterPlayers(room);
+    }
+
+    function assignDrawerForRound(room) {
+      const candidates = drawerCandidates(room);
+      if (!candidates.length) {
+        room.drawerId = "";
+        return null;
+      }
+      const index = Math.max(0, (Number(room.round) || 1) - 1) % candidates.length;
+      room.drawerId = candidates[index].id;
+      return candidates[index];
+    }
+
+    function advanceDrawer(room) {
+      const candidates = drawerCandidates(room);
+      if (!candidates.length) {
+        room.drawerId = "";
+        return null;
+      }
+      const currentIndex = candidates.findIndex((player) => player.id === room.drawerId);
+      const fallbackIndex = Math.max(0, (Number(room.round) || 1) - 1) % candidates.length;
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % candidates.length : fallbackIndex;
+      room.drawerId = candidates[nextIndex].id;
+      return candidates[nextIndex];
+    }
+
+    function currentDrawer(room = state.room) {
+      return room?.drawerId ? room.players?.[room.drawerId] || null : null;
+    }
+
+    function isCurrentDrawer(room = state.room) {
+      return Boolean(state.role === "student" && room?.drawerId && room.drawerId === currentPlayerId());
+    }
+
+    function canDraw(room = state.room) {
+      return Boolean(room?.status === "game" && isCurrentDrawer(room));
+    }
+
     function currentRemaining(room = state.room) {
       if (!room || room.status !== "game" || !room.roundStartedAt) return room?.duration || 0;
       const elapsed = Math.floor((Date.now() - room.roundStartedAt) / 1000);
@@ -1550,6 +1665,7 @@
 
     function playerCanAnswer(player, room = state.room) {
       if (!player) return { ok: false, message: "참가자 정보를 찾을 수 없습니다." };
+      if (room?.status === "game" && player.id && player.id === room.drawerId) return { ok: false, message: "이번 문제를 그리는 학생은 정답을 입력할 수 없습니다." };
       if (player.chatBlocked) return { ok: false, message: "운영창에서 채팅이 봉인되었습니다." };
       if (isRoundBlocked(player, room)) return { ok: false, message: "이번 문제는 운영창에서 봉인되었습니다." };
       return { ok: true, message: "" };
@@ -1618,6 +1734,7 @@
         status: "lobby",
         round: 0,
         currentWordIndex: -1,
+        drawerId: "",
         roundStartedAt: null,
         autoAdvanceAt: null,
         solvedBy: null,
@@ -1738,6 +1855,7 @@
       room.status = "finished";
       room.roundStartedAt = null;
       room.autoAdvanceAt = null;
+      room.drawerId = "";
       room.reveal = true;
       room.solvedBy = room.solvedBy || null;
     }
@@ -1754,12 +1872,17 @@
     async function nextRound() {
       if (state.roundAdvanceBusy) return;
       state.roundAdvanceBusy = true;
+      let blockedMessage = "";
       try {
         await refreshLatestRoom();
         const updated = await transactRoom((room) => {
           if (room.round >= room.roundLimit) {
             finishRoom(room);
             return;
+          }
+          if (!rosterPlayers(room).length) {
+            blockedMessage = "학생이 한 명 이상 입장해야 게임을 시작할 수 있습니다.";
+            return false;
           }
           const available = room.words.map((word, index) => ({ word, index })).filter((item) => !room.used.includes(item.word));
           const pool = available.length ? available : room.words.map((word, index) => ({ word, index }));
@@ -1777,10 +1900,16 @@
           room.strokes = [];
           room.guesses = [];
           room.roundWinners = [];
+          assignDrawerForRound(room);
           Object.values(room.players).forEach((player) => {
             player.blockedRound = null;
           });
         });
+        if (blockedMessage) {
+          showToast(blockedMessage);
+          return;
+        }
+        if (!updated) return;
         showScreen("game");
         if (updated?.status === "finished") {
           showToast("모든 라운드가 끝났습니다.");
@@ -1811,6 +1940,7 @@
           room.currentWordIndex = -1;
           room.roundStartedAt = null;
           room.autoAdvanceAt = null;
+          room.drawerId = "";
           room.solvedBy = null;
           room.reveal = false;
           room.guesses = [];
@@ -1822,9 +1952,33 @@
             player.blockedRound = null;
           });
         }
+        room.drawerId = "";
         room.status = "lobby";
       }, "back to lobby");
       showScreen("lobby");
+    }
+
+    async function changeDrawerForRoom() {
+      await refreshLatestRoom();
+      let message = "";
+      let changed = false;
+      const updated = await transactRoom((room) => {
+        if (room.status !== "game") {
+          message = "게임 중에만 그리는 학생을 바꿀 수 있습니다.";
+          return false;
+        }
+        const drawer = advanceDrawer(room);
+        if (!drawer) {
+          message = "바꿀 학생이 없습니다.";
+          return false;
+        }
+        room.clearId += 1;
+        room.strokes = [];
+        message = `${drawer.name} 학생이 이번 문제를 그립니다.`;
+        changed = true;
+      }, "change drawer");
+      if (updated && changed) resetCanvas();
+      if (message) showToast(message);
     }
 
     async function clearCanvasForRoom() {
@@ -1973,7 +2127,7 @@
     }
 
     function startDraw(event) {
-      if (state.role !== "teacher" || !state.room || state.room.status !== "game") return;
+      if (!canDraw(state.room)) return;
       if (state.drawing) return;
       event.preventDefault();
       state.inputMode = event.type.startsWith("mouse") ? "mouse" : "pointer";
@@ -2014,6 +2168,7 @@
       const stroke = state.currentStroke;
       state.currentStroke = null;
       transactRoom((room) => {
+        if (room.status !== "game" || room.drawerId !== currentPlayerId()) return false;
         room.strokes.push(stroke);
         room.strokes = room.strokes.slice(-260);
       }, "stroke");
@@ -2034,12 +2189,40 @@
       document.querySelector("#lobbyGuide").textContent = state.role === "teacher" ? "학생들에게 이 코드를 알려주세요." : "선생님이 게임을 시작할 때까지 기다립니다.";
       document.querySelector("#lobbyTeacherActions").style.display = state.role === "teacher" ? "grid" : "none";
       document.querySelector("#roomMiniInfo").textContent = `방 코드 ${room.code} · ${room.teacherName}`;
-      document.querySelector("#roleBadge").textContent = state.role === "teacher" ? "교사 화면" : state.role === "admin" ? "운영 화면" : "학생 화면";
-      document.querySelector("#canvasLock").classList.toggle("show", state.role !== "teacher");
-      document.querySelector("#toolbar").style.display = state.role === "teacher" ? "grid" : "none";
+      const drawer = currentDrawer(room);
+      const drawerName = drawer ? drawer.name : "아직 없음";
+      const currentIsDrawer = isCurrentDrawer(room);
+      const drawAllowed = canDraw(room);
+      document.querySelector("#drawerNameText").textContent = drawerName;
+      document.querySelector("#drawerHelpText").textContent = room.status === "game"
+        ? drawer
+          ? `${drawer.name} 학생만 제시어를 보고 그림을 그립니다.`
+          : "학생이 입장하면 그리는 학생을 배정할 수 있습니다."
+        : room.status === "finished"
+          ? "게임이 끝났습니다."
+          : "라운드가 시작되면 학생 중 한 명이 자동으로 배정됩니다.";
+      document.querySelector("#roleBadge").textContent = state.role === "teacher"
+        ? "교사 진행"
+        : state.role === "admin"
+          ? "운영 화면"
+          : currentIsDrawer
+            ? "그리는 학생"
+            : "맞히는 학생";
+      const canvasLock = document.querySelector("#canvasLock");
+      canvasLock.textContent = drawAllowed
+        ? ""
+        : room.status === "game"
+          ? currentIsDrawer
+            ? ""
+            : drawer
+              ? `${drawer.name} 학생이 그리고 있습니다. 그림을 보고 맞혀보세요.`
+              : "아직 그리는 학생이 없습니다."
+          : "라운드가 시작되면 그리는 학생만 그림을 그릴 수 있습니다.";
+      canvasLock.classList.toggle("show", !drawAllowed);
+      document.querySelector("#toolbar").style.display = drawAllowed ? "grid" : "none";
       document.querySelector("#teacherControls").style.display = state.role === "teacher" ? "grid" : "none";
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
-      document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" ? "grid" : "none";
+      document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" && !currentIsDrawer ? "grid" : "none";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
       const currentStudent = room.players[currentPlayerId()];
       const permission = state.role === "student" ? playerCanAnswer(currentStudent, room) : { ok: true, message: "" };
@@ -2048,7 +2231,9 @@
       answerInput.placeholder = permission.ok ? "정답 입력" : permission.message;
       document.querySelector("#studentNotice").textContent = room.status === "finished"
         ? "게임이 끝났습니다. 순위를 확인하세요."
-        : permission.ok
+        : currentIsDrawer
+          ? "이번 문제는 내가 그리는 차례입니다. 제시어를 말이나 글자로 쓰지 말고 그림으로 표현하세요."
+          : permission.ok
           ? "정답 순서대로 100, 90, 80, 70, 60, 50점을 받습니다. 일부 표현은 전송되지 않습니다."
           : permission.message;
       renderPlayers();
@@ -2066,13 +2251,16 @@
       const scoreList = document.querySelector("#scoreList");
       const players = roomPlayers(room);
       const active = new Set(activePlayers(room).map((player) => player.id));
-      const html = players.length ? players.map((player) => `
-        <div class="player-pill">
-          <span class="avatar">${escapeHtml(player.number || player.name.slice(0, 1))}</span>
-          <span class="player-name">${escapeHtml(player.name)}${active.has(player.id) ? "" : " (자리비움)"}</span>
-          <span class="score">${player.score}</span>
-        </div>
-      `).join("") : '<div class="empty">아직 참여한 학생이 없습니다.</div>';
+      const html = players.length ? players.map((player) => {
+        const drawerMark = room.status === "game" && player.id === room.drawerId ? '<span class="drawer-mark">그림</span>' : "";
+        return `
+          <div class="player-pill">
+            <span class="avatar">${escapeHtml(player.number || player.name.slice(0, 1))}</span>
+            <span class="player-name">${escapeHtml(player.name)}${drawerMark}${active.has(player.id) ? "" : " (자리비움)"}</span>
+            <span class="score">${player.score}</span>
+          </div>
+        `;
+      }).join("") : '<div class="empty">아직 참여한 학생이 없습니다.</div>';
       lobby.innerHTML = html;
       scoreList.innerHTML = html;
     }
@@ -2088,11 +2276,20 @@
         document.querySelector("#drawTitle").textContent = "게임이 끝났습니다.";
         return;
       }
-      const showWord = state.role === "teacher" || state.role === "admin" || room.reveal;
+      const drawer = currentDrawer(room);
+      const showWord = state.role === "teacher" || state.role === "admin" || isCurrentDrawer(room) || room.reveal;
       document.querySelector("#roundLabel").textContent = room.round ? `${room.round}라운드` : "대기 중";
       document.querySelector("#roundProgress").textContent = `${Math.min(room.round || 0, room.roundLimit)} / ${room.roundLimit}`;
       document.querySelector("#secretWord").textContent = word ? (showWord ? word : "가려진 제시어") : "문제 없음";
-      document.querySelector("#drawTitle").textContent = word ? (showWord ? `제시어: ${word}` : "그림으로 설명해 주세요") : "게임을 시작해 주세요";
+      document.querySelector("#drawTitle").textContent = word
+        ? isCurrentDrawer(room)
+          ? `내가 그릴 제시어: ${word}`
+          : showWord
+            ? `제시어: ${word}`
+            : drawer
+              ? `${drawer.name} 학생이 그리고 있습니다`
+              : "그리는 학생을 기다립니다"
+        : "게임을 시작해 주세요";
     }
 
     function renderTimer() {
@@ -2176,6 +2373,7 @@
         const roundBlocked = isRoundBlocked(player, room);
         const rankIndex = correctRank(room, player.id);
         const rankChip = rankIndex >= 0 ? `<span class="seal-chip rank-chip">${rankIndex + 1}등 · ${scoreForRank(rankIndex)}점</span>` : "";
+        const drawerChip = room.status === "game" && player.id === room.drawerId ? '<span class="seal-chip drawer-chip">그리는 학생</span>' : "";
         return `
           <div class="admin-player">
             <div class="admin-player-top">
@@ -2186,10 +2384,12 @@
               <span class="seal-chip">${active.has(player.id) ? "접속" : "오프라인"}</span>
               ${player.chatBlocked ? '<span class="seal-chip on">채팅 봉인</span>' : ""}
               ${roundBlocked ? '<span class="seal-chip on">이번 문제 봉인</span>' : ""}
+              ${drawerChip}
               ${rankChip}
             </div>
             <div class="admin-player-meta">${fixedGrade}학년 ${Number(player.classNo) || "-"}반 ${Number(player.number) || "-"}번</div>
             <div class="admin-actions">
+              <button class="small-btn secondary" data-admin-action="set-drawer" data-player-id="${escapeHtml(player.id)}" ${room.status === "game" && player.id !== room.drawerId ? "" : "disabled"}>그리기 지정</button>
               <button class="small-btn warn" data-admin-action="toggle-chat" data-player-id="${escapeHtml(player.id)}">${player.chatBlocked ? "채팅 해제" : "채팅 봉인"}</button>
               <button class="small-btn danger" data-admin-action="toggle-round" data-player-id="${escapeHtml(player.id)}" ${room.status === "game" ? "" : "disabled"}>${roundBlocked ? "문제 해제" : "이번 문제 봉인"}</button>
             </div>
@@ -2265,6 +2465,17 @@
           message = "학생 정보를 찾을 수 없습니다.";
           return false;
         }
+        if (action === "set-drawer") {
+          if (room.status !== "game") {
+            message = "게임 중에만 그리는 학생을 지정할 수 있습니다.";
+            return false;
+          }
+          room.drawerId = player.id;
+          room.clearId += 1;
+          room.strokes = [];
+          message = `${player.name} 학생이 이번 문제를 그립니다.`;
+          return;
+        }
         if (action === "toggle-chat") {
           player.chatBlocked = !player.chatBlocked;
           message = `${player.name} ${player.chatBlocked ? "채팅 봉인" : "채팅 해제"}`;
@@ -2339,6 +2550,7 @@
     document.querySelector("#startGameBtn").addEventListener("click", nextRound);
     document.querySelector("#nextRoundBtn").addEventListener("click", nextRound);
     document.querySelector("#revealAnswerBtn").addEventListener("click", revealAnswer);
+    document.querySelector("#changeDrawerBtn").addEventListener("click", changeDrawerForRoom);
     document.querySelector("#clearCanvasBtn").addEventListener("click", clearCanvasForRoom);
     document.querySelector("#backLobbyBtn").addEventListener("click", backToLobby);
     document.querySelector("#copyLinkBtn").addEventListener("click", copyJoinLink);
