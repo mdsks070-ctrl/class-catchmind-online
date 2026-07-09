@@ -1198,6 +1198,15 @@
       padding-top: 76px;
     }
 
+    body.is-test-mode .screen {
+      min-height: calc(100vh - 94px);
+    }
+
+    body.is-test-mode .game-screen,
+    body.is-test-mode .admin-screen {
+      min-height: calc(100vh - 94px);
+    }
+
     .test-switcher {
       position: fixed;
       top: 12px;
@@ -1273,6 +1282,145 @@
       100% {
         opacity: 0;
         transform: translateY(82vh) rotate(320deg);
+      }
+    }
+
+    @media (min-width: 1121px) {
+      body.is-test-mode .page {
+        padding-top: 18px;
+      }
+
+      body.is-test-mode .screen,
+      body.is-test-mode .game-screen,
+      body.is-test-mode .admin-screen {
+        min-height: calc(100vh - 36px);
+      }
+
+      .game-screen {
+        height: calc(100vh - 36px);
+        grid-template-columns: minmax(720px, 1fr) minmax(280px, 320px);
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      body.is-test-mode .game-screen {
+        height: calc(100vh - 36px);
+      }
+
+      .test-switcher {
+        gap: 4px;
+        padding: 5px 6px;
+        border-width: 2px;
+        border-radius: 14px;
+      }
+
+      .test-switcher span {
+        padding: 0 6px;
+        font-size: 12px;
+      }
+
+      .test-switcher button {
+        min-height: 30px;
+        padding: 5px 9px;
+        font-size: 12px;
+      }
+
+      .game-panel .panel-head {
+        padding: 5px 12px 0;
+      }
+
+      .game-panel .panel-head p {
+        font-size: 11px;
+      }
+
+      .game-panel .panel-body {
+        grid-template-columns: minmax(160px, .8fr) minmax(250px, .95fr) minmax(260px, 1fr);
+        gap: 8px;
+        padding: 5px 10px 7px;
+      }
+
+      .round-card,
+      .drawer-card,
+      .timer {
+        min-height: 58px;
+        padding: 6px 9px;
+      }
+
+      .round-card .status-line,
+      .drawer-card span,
+      .timer-text span {
+        display: none;
+      }
+
+      .secret-word {
+        font-size: 18px;
+      }
+
+      .drawer-card small {
+        display: none;
+      }
+
+      .drawer-card strong {
+        font-size: 16px;
+      }
+
+      .timer {
+        grid-template-columns: 48px minmax(0, 1fr);
+      }
+
+      .timer-circle {
+        width: 48px;
+        height: 48px;
+      }
+
+      .timer-inner {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+      }
+
+      .timer-text span {
+        font-size: 11px;
+      }
+
+      .game-panel .panel-foot {
+        padding: 0 10px 7px;
+      }
+
+      .game-panel #teacherControls {
+        grid-template-columns: minmax(260px, 1fr) minmax(540px, 1.55fr);
+        align-items: center;
+        gap: 8px;
+      }
+
+      .game-panel #teacherControls .mini-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .game-panel #teacherControls .mini-grid + .mini-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .game-panel #teacherControls .small-btn {
+        min-height: 34px;
+        padding: 6px 10px;
+        font-size: 13px;
+      }
+
+      .draw-panel {
+        min-height: 0;
+      }
+
+      .canvas-wrap {
+        width: auto;
+        height: 100%;
+        max-width: 100%;
+        aspect-ratio: 14 / 9;
+        justify-self: center;
+        align-self: center;
+      }
+
+      .chat-panel .panel-body {
+        padding: 10px;
       }
     }
 
@@ -1533,6 +1681,12 @@
     @media (max-width: 680px) {
       body.is-test-mode .page {
         padding-top: 116px;
+      }
+
+      body.is-test-mode .screen,
+      body.is-test-mode .game-screen,
+      body.is-test-mode .admin-screen {
+        min-height: calc(100vh - 134px);
       }
 
       .test-switcher {
