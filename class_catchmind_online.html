@@ -1226,7 +1226,7 @@
           <div class="stack" id="teacherControls">
             <div class="mini-grid">
               <button class="small-btn good" id="nextRoundBtn">다음 문제</button>
-              <button class="small-btn warn" id="revealAnswerBtn">정답 보기</button>
+              <button class="small-btn warn" id="revealAnswerBtn">5초 후 넘기기</button>
             </div>
             <div class="mini-grid">
               <button class="small-btn secondary" id="changeDrawerBtn">그릴 학생 바꾸기</button>
@@ -1292,7 +1292,7 @@
             <div class="stat"><span>정답</span><strong id="adminCorrectCount">0</strong></div>
           </div>
           <div class="mini-grid" id="adminRoundActions">
-            <button class="small-btn warn" id="adminRevealBtn">정답 공개</button>
+            <button class="small-btn warn" id="adminRevealBtn">5초 후 넘기기</button>
             <button class="small-btn good" id="adminNextRoundBtn">다음 문제</button>
           </div>
           <div class="admin-list" id="adminPlayers"></div>
@@ -1347,6 +1347,7 @@
     };
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const rankScores = [100, 90, 80, 70, 60, 50];
+    const autoAdvanceDelayMs = 5000;
     const fallbackWords = [
       "사과", "바나나", "수박", "딸기", "아이스크림", "떡볶이", "라면", "김밥", "피자", "햄버거", "케이크", "우산",
       "고양이", "강아지", "토끼", "판다", "펭귄", "사자", "코끼리", "기린", "돌고래", "공룡", "나비", "꿀벌",
@@ -1583,6 +1584,7 @@
         drawerId: room.drawerId || "",
         reveal: Boolean(room.reveal),
         autoAdvanceAt: Number(room.autoAdvanceAt) || null,
+        autoAdvanceReason: room.autoAdvanceReason || "",
         solvedBy: room.solvedBy || null,
         strokes: (room.strokes || []).length,
         winners: room.roundWinners || [],
@@ -1631,6 +1633,7 @@
       }
       room.clearId = Number(room.clearId) || 0;
       room.autoAdvanceAt = Number(room.autoAdvanceAt) || null;
+      room.autoAdvanceReason = typeof room.autoAdvanceReason === "string" ? room.autoAdvanceReason : "";
       room.soundOn = room.soundOn !== false;
       room.status = room.status || "lobby";
       return room;
@@ -2029,6 +2032,7 @@
       room.status = "finished";
       room.roundStartedAt = null;
       room.autoAdvanceAt = null;
+      room.autoAdvanceReason = "";
       room.drawerId = "";
       room.reveal = true;
       room.solvedBy = room.solvedBy || null;
@@ -2072,6 +2076,7 @@
           room.used.push(picked.word);
           room.roundStartedAt = Date.now();
           room.autoAdvanceAt = null;
+          room.autoAdvanceReason = "";
           room.solvedBy = null;
           room.reveal = false;
           room.clearId += 1;
@@ -2104,8 +2109,10 @@
 
     async function revealAnswer() {
       await transactRoom((room) => {
-        room.reveal = true;
-        if (room.status === "game" && !room.autoAdvanceAt) room.autoAdvanceAt = Date.now() + 5000;
+        if (room.status === "game" && !room.autoAdvanceAt) {
+          room.autoAdvanceAt = Date.now() + autoAdvanceDelayMs;
+          room.autoAdvanceReason = "manual";
+        }
       }, "reveal");
     }
 
@@ -2118,6 +2125,7 @@
           room.currentWordIndex = -1;
           room.roundStartedAt = null;
           room.autoAdvanceAt = null;
+          room.autoAdvanceReason = "";
           room.drawerId = "";
           room.solvedBy = null;
           room.reveal = false;
@@ -2131,6 +2139,8 @@
           });
         }
         room.drawerId = "";
+        room.autoAdvanceAt = null;
+        room.autoAdvanceReason = "";
         room.status = "lobby";
       }, "back to lobby");
       showScreen("lobby");
@@ -2168,6 +2178,12 @@
       showToast("그림판을 비웠습니다.");
     }
 
+    function scheduleAutoAdvance(room, reason = "correct") {
+      if (!room || room.status !== "game" || room.autoAdvanceAt) return;
+      room.autoAdvanceAt = Date.now() + autoAdvanceDelayMs;
+      room.autoAdvanceReason = reason;
+    }
+
     function acceptGuessForScore(room, guess) {
       if (!room || !guess) return { ok: false, message: "정답 기록을 찾을 수 없습니다." };
       const player = room.players?.[guess.playerId];
@@ -2189,6 +2205,7 @@
       guess.points = points;
       guess.acceptedAt = Date.now();
       if (!room.solvedBy) room.solvedBy = guess.playerId;
+      scheduleAutoAdvance(room, "correct");
       player.score = (Number(player.score) || 0) + points;
       return { ok: true, rank, points };
     }
@@ -2200,7 +2217,7 @@
       if (!permission.ok) return { ok: false, message: permission.message };
       if (room.guesses.some((guess) => guess.id === answer.id)) return { ok: true, duplicate: true };
       const left = currentRemaining(room);
-      const matched = left > 0 && normalize(answer.text) === normalize(word);
+      const matched = room.status === "game" && !room.reveal && left > 0 && normalize(answer.text) === normalize(word);
       const winners = Array.isArray(room.roundWinners) ? room.roundWinners : [];
       room.roundWinners = winners;
       const alreadyCorrect = correctRank(room, answer.playerId) >= 0;
@@ -2433,6 +2450,7 @@
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
       document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" && !currentIsDrawer ? "grid" : "none";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
+      document.querySelector("#revealAnswerBtn").disabled = room.status !== "game" || Boolean(room.autoAdvanceAt);
       const currentStudent = room.players[currentPlayerId()];
       const permission = state.role === "student" ? playerCanAnswer(currentStudent, room) : { ok: true, message: "" };
       const answerInput = document.querySelector("#answerInput");
@@ -2506,6 +2524,7 @@
       if (!room) return;
       if (room.status === "finished") {
         document.querySelector("#timerText").textContent = "끝";
+        document.querySelector("#timerTitle").textContent = "게임 종료";
         document.querySelector("#timerCircle").style.background = "conic-gradient(var(--blue) 360deg, #e6d7b5 0)";
         document.querySelector("#timerSub").textContent = "최종 점수를 확인하고 대기실로 돌아갈 수 있습니다.";
         return;
@@ -2514,15 +2533,16 @@
       const deg = room.duration ? Math.max(0, left / room.duration) * 360 : 0;
       const circle = document.querySelector("#timerCircle");
       document.querySelector("#timerText").textContent = formatTime(left);
+      document.querySelector("#timerTitle").textContent = "남은 시간";
       circle.style.setProperty("--timer-deg", `${deg}deg`);
       circle.style.background = `conic-gradient(${left <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e6d7b5 0)`;
-      if (room.status === "game" && left <= 0 && !room.autoAdvanceAt && state.role === "teacher") {
+      if (room.status === "game" && left <= 0 && !room.autoAdvanceAt && (state.role === "teacher" || state.role === "admin")) {
         if (!state.autoRevealBusy) {
           state.autoRevealBusy = true;
           transactRoom((draft) => {
             if (draft.status !== "game" || draft.autoAdvanceAt || currentRemaining(draft) > 0) return false;
-            draft.reveal = true;
-            draft.autoAdvanceAt = Date.now() + 5000;
+            draft.autoAdvanceAt = Date.now() + autoAdvanceDelayMs;
+            draft.autoAdvanceReason = "timeout";
           }, "timer reveal").finally(() => {
             state.autoRevealBusy = false;
           });
@@ -2531,8 +2551,18 @@
       }
       if (room.status === "game" && room.autoAdvanceAt) {
         const nextIn = Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000));
-        document.querySelector("#timerSub").textContent = nextIn ? `${nextIn}초 후 다음 단계로 넘어갑니다.` : "다음 단계로 넘어갑니다.";
-        if (nextIn <= 0 && state.role === "teacher") nextRound();
+        const countdownMax = Math.max(1, Math.ceil(autoAdvanceDelayMs / 1000));
+        const countdownDeg = Math.max(0, Math.min(1, nextIn / countdownMax)) * 360;
+        document.querySelector("#timerTitle").textContent = room.autoAdvanceReason === "correct" ? "1등 정답" : "다음 문제 준비";
+        document.querySelector("#timerText").textContent = String(nextIn);
+        circle.style.setProperty("--timer-deg", `${countdownDeg}deg`);
+        circle.style.background = `conic-gradient(var(--blue) var(--timer-deg), #e6d7b5 0)`;
+        document.querySelector("#timerSub").textContent = nextIn
+          ? room.autoAdvanceReason === "correct"
+            ? `${nextIn}초 안에 더 맞히면 순위 점수를 받을 수 있습니다. 정답은 공개하지 않습니다.`
+            : `${nextIn}초 후 다음 문제로 넘어갑니다.`
+          : "다음 문제로 넘어갑니다.";
+        if (nextIn <= 0 && (state.role === "teacher" || state.role === "admin")) nextRound();
         return;
       }
       const correctCount = (room.roundWinners || []).length;
@@ -2607,7 +2637,7 @@
       const adminRevealButton = document.querySelector("#adminRevealBtn");
       adminNextButton.textContent = room.status === "lobby" ? "게임 시작" : room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
       adminNextButton.disabled = room.status === "finished";
-      adminRevealButton.disabled = room.status !== "game" || room.reveal;
+      adminRevealButton.disabled = room.status !== "game" || Boolean(room.autoAdvanceAt);
       document.querySelector("#adminPlayers").innerHTML = players.length ? players.map((player) => {
         const roundBlocked = isRoundBlocked(player, room);
         const rankIndex = correctRank(room, player.id);

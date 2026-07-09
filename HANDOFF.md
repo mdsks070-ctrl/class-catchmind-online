@@ -257,3 +257,13 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Teacher/admin answer logs now show `정답 인정` for unscored guesses; accepting a guess awards rank-based points through the same scoring helper as auto scoring.
 - Manual answer mode label changed to `교사 확인 후 인정`.
 - Verified with a Firebase multi-context E2E test: admin started game, student 13 auto-scored 100, student 14 was manually accepted for 90, simultaneous teacher/admin next clicks advanced only to round 2.
+
+## 2026-07-09 Correct Countdown Flow
+
+- The app no longer reveals the actual prompt to students when a correct answer is processed.
+- First accepted correct answer starts a 5-second countdown with the timer title `1등 정답`.
+- During those 5 seconds, other students can still answer and receive rank-based points.
+- After the countdown, teacher/admin auto-advances to the next prompt. Existing double-advance protection prevents skipped rounds if both windows are open.
+- The old `정답 보기/정답 공개` buttons now read `5초 후 넘기기` and start the same countdown without revealing the prompt.
+- Timeout also starts the countdown without revealing the prompt.
+- Verified with a Firebase multi-context E2E test: student 13 got 100, student 14 got 90 during countdown, student view kept the prompt hidden, then round 2 loaded a new prompt.
