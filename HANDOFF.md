@@ -337,3 +337,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Clicking the QR opens a modal with a large QR image, room code, and join link for classroom projection.
 - The modal can be closed with the close button, backdrop click, or Escape, and focus returns to the QR button.
 - Verified in the in-app browser: a teacher-created room showed the lobby QR, clicking it opened a 380px enlarged QR modal with the correct room code/link, and closing returned focus to the QR button.
+
+## 2026-07-09 Auto Advance Driver Fix
+
+- The 5-second countdown after the first correct answer is no longer driven only by teacher/admin screens.
+- Any connected game screen that observes an expired `autoAdvanceAt` now attempts `nextRound()`.
+- The existing round/status transaction guards still keep the room from advancing more than once when several screens attempt it together.
+- Verified with an automated Chrome E2E test: teacher created the room and started round 1, two students joined, the teacher page was closed, a guessing student submitted the correct answer, and the remaining student screens advanced to round 2 after the 5-second countdown.
