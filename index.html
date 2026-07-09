@@ -787,6 +787,11 @@
       font-weight: 800;
     }
 
+    .private-answer {
+      color: var(--muted);
+      font-weight: 900;
+    }
+
     .answer-form {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 76px;
@@ -2461,7 +2466,20 @@
           : "정답 순서대로 100점부터 10점씩 내려갑니다.";
     }
 
-    function chatListHtml(room) {
+    function guessTextHtml(guess, room, audience = state.role) {
+      const canReadText = audience !== "student" || guess.playerId === currentPlayerId() || room?.reveal || room?.status === "finished";
+      if (canReadText) return `${escapeHtml(guess.text)}${guessResultText(guess)}`;
+      if (guess.correct) {
+        const rank = Number(guess.rank) || 0;
+        const points = Number(guess.points) || 0;
+        const rankText = rank ? ` ${rank}등` : "";
+        const pointsText = points ? ` +${points}점` : "";
+        return `<span class="private-answer">정답${rankText}${pointsText}</span>`;
+      }
+      return '<span class="private-answer">답안 제출됨</span>';
+    }
+
+    function chatListHtml(room, audience = state.role) {
       if (!room?.guesses?.length) return '<div class="empty">아직 정답 입력이 없습니다.</div>';
       return room.guesses.map((guess) => `
         <div class="chat-item${guess.correct ? " correct" : ""}">
@@ -2469,17 +2487,16 @@
             <span class="chat-name">${escapeHtml(guess.name)}</span>
             <span class="chat-time">${new Date(guess.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
-          <div class="chat-text">${escapeHtml(guess.text)}${guessResultText(guess)}</div>
+          <div class="chat-text">${guessTextHtml(guess, room, audience)}</div>
         </div>
       `).join("");
     }
 
     function renderChat() {
       const room = state.room;
-      const html = chatListHtml(room);
-      document.querySelector("#chatList").innerHTML = html;
+      document.querySelector("#chatList").innerHTML = chatListHtml(room, state.role);
       const adminChat = document.querySelector("#adminChatList");
-      if (adminChat) adminChat.innerHTML = html;
+      if (adminChat) adminChat.innerHTML = chatListHtml(room, "admin");
     }
 
     function renderAdmin() {
