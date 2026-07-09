@@ -854,7 +854,12 @@
           </div>
           <div class="field">
             <label for="wordList">정답 단어 목록</label>
-            <textarea id="wordList" placeholder="사과, 고양이, 학교 ...">사과, 고양이, 학교, 우산, 축구공, 떡볶이, 도서관, 로봇, 바닷가, 생일파티, 우주선, 무지개</textarea>
+            <textarea id="wordList" placeholder="사과, 고양이, 학교 ...">사과, 바나나, 수박, 딸기, 아이스크림, 떡볶이, 라면, 김밥, 피자, 햄버거, 케이크, 우산,
+고양이, 강아지, 토끼, 판다, 펭귄, 사자, 코끼리, 기린, 돌고래, 공룡, 나비, 꿀벌,
+학교, 교실, 칠판, 책가방, 연필, 지우개, 도서관, 운동장, 급식실, 버스, 자전거, 횡단보도,
+축구공, 농구공, 배드민턴, 줄넘기, 수영장, 스케이트, 캠핑, 낚시, 등산, 눈사람, 썰매, 비행기,
+로봇, 우주선, 외계인, 무지개, 번개, 구름, 바닷가, 화산, 보물상자, 마법사, 왕관, 성,
+생일파티, 놀이공원, 영화관, 병원, 소방차, 경찰차, 슈퍼마켓, 편의점, 스마트폰, 컴퓨터, 카메라, 이어폰</textarea>
           </div>
           <button class="big-btn primary" id="createRoomBtn">방 만들기</button>
           <div class="mini-grid">
@@ -1031,7 +1036,14 @@
       warned: false
     };
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
-    const fallbackWords = ["사과", "고양이", "학교", "우산", "축구공", "떡볶이", "도서관", "로봇", "바닷가", "생일파티", "우주선", "무지개"];
+    const fallbackWords = [
+      "사과", "바나나", "수박", "딸기", "아이스크림", "떡볶이", "라면", "김밥", "피자", "햄버거", "케이크", "우산",
+      "고양이", "강아지", "토끼", "판다", "펭귄", "사자", "코끼리", "기린", "돌고래", "공룡", "나비", "꿀벌",
+      "학교", "교실", "칠판", "책가방", "연필", "지우개", "도서관", "운동장", "급식실", "버스", "자전거", "횡단보도",
+      "축구공", "농구공", "배드민턴", "줄넘기", "수영장", "스케이트", "캠핑", "낚시", "등산", "눈사람", "썰매", "비행기",
+      "로봇", "우주선", "외계인", "무지개", "번개", "구름", "바닷가", "화산", "보물상자", "마법사", "왕관", "성",
+      "생일파티", "놀이공원", "영화관", "병원", "소방차", "경찰차", "슈퍼마켓", "편의점", "스마트폰", "컴퓨터", "카메라", "이어폰"
+    ];
     const studentIdentityKey = "classCatchOnline.studentIdentity";
     const blockedAnswerTerms = [
       "바보", "멍청", "멍청이", "죽어", "꺼져", "닥쳐", "미친", "미쳤",
@@ -1358,7 +1370,7 @@
       const left = currentRemaining(room);
       if (left <= 0) return 0;
       const speedRatio = Math.max(0, Math.min(1, left / duration));
-      return Math.round(600 + speedRatio * 400);
+      return Math.round(50 + speedRatio * 50);
     }
 
     function guessResultText(guess) {
@@ -1608,19 +1620,19 @@
         const playerId = currentPlayerId();
         const player = room.players[playerId];
         const left = currentRemaining(room);
-        const correct = left > 0 && normalize(text) === normalize(word);
-        const points = correct ? calculateRoundScore(room) : 0;
+        const matched = left > 0 && normalize(text) === normalize(word);
+        const points = matched && !room.solvedBy ? calculateRoundScore(room) : 0;
         room.guesses.unshift({
           id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
           playerId,
           name: player?.name || state.name,
           text,
-          correct,
+          correct: matched,
           points,
           at: Date.now()
         });
         room.guesses = room.guesses.slice(0, 60);
-        if (correct && !room.solvedBy && room.answerMode === "auto") {
+        if (matched && !room.solvedBy && room.answerMode === "auto") {
           room.solvedBy = playerId;
           room.reveal = true;
           room.autoAdvanceAt = Date.now() + 5000;
