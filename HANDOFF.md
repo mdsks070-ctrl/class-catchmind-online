@@ -330,3 +330,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - UI test mode now keeps `6학년 3반 12번` as the drawing student and `6학년 3반 13번` as the guessing student even after the 5-second auto-advance.
 - Teacher view no longer labels the right panel as `정답 입력`; it now reads `답변 로그`, with the answer form hidden.
 - Verified in the in-app browser: teacher had no answer form, drawing student had tools and no answer form, guessing student had answer input and no drawing tools, and the same role split held after auto-advancing to round 2.
+
+## 2026-07-09 QR Enlargement
+
+- The lobby QR image is now a clickable button with a hint that it can be enlarged.
+- Clicking the QR opens a modal with a large QR image, room code, and join link for classroom projection.
+- The modal can be closed with the close button, backdrop click, or Escape, and focus returns to the QR button.
+- Verified in the in-app browser: a teacher-created room showed the lobby QR, clicking it opened a 380px enlarged QR modal with the correct room code/link, and closing returned focus to the QR button.
