@@ -843,6 +843,53 @@
       gap: 8px;
     }
 
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .page {
+      padding-bottom: calc(102px + env(safe-area-inset-bottom));
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
+      position: fixed;
+      left: 50%;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 30;
+      width: min(720px, calc(100vw - 24px));
+      padding: 10px;
+      transform: translateX(-50%);
+      border: 2px solid #caa96a;
+      border-radius: 16px;
+      background: rgba(255, 253, 247, .98);
+      box-shadow: 0 14px 32px rgba(43, 34, 18, .22);
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 84px;
+      gap: 8px;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput {
+      min-height: 58px;
+      padding: 0 16px;
+      border-color: #caa96a;
+      border-radius: 13px;
+      background: #ffffff;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(28, 155, 114, .16);
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form .small-btn {
+      min-height: 58px;
+      padding: 0 14px;
+      border-radius: 13px;
+      font-size: 16px;
+    }
+
     .empty {
       display: grid;
       min-height: 110px;
@@ -953,7 +1000,7 @@
       }
 
       .answer-form {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) 72px;
       }
     }
 
@@ -1063,7 +1110,9 @@
         right: 8px;
         bottom: max(8px, env(safe-area-inset-bottom));
         z-index: 30;
+        width: auto;
         padding: 8px;
+        transform: none;
         border: 2px solid #caa96a;
         border-radius: 14px;
         background: rgba(255, 250, 240, .98);
@@ -1072,7 +1121,7 @@
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form {
         display: grid !important;
-        grid-template-columns: minmax(0, 1fr) 72px;
+        grid-template-columns: minmax(0, 1fr) 76px;
       }
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput,
@@ -1293,14 +1342,13 @@
       <aside class="chat-panel">
         <div class="panel-head">
           <h2>정답 입력</h2>
-          <p id="chatGuide">학생 답변이 여기에 쌓입니다.</p>
         </div>
         <div class="panel-body">
           <div class="chat-list" id="chatList"></div>
         </div>
         <div class="panel-foot">
           <form class="answer-form" id="answerForm">
-            <input id="answerInput" type="text" autocomplete="off" placeholder="정답 입력">
+            <input id="answerInput" type="text" autocomplete="off" enterkeyhint="send" aria-label="정답 입력" placeholder="정답 입력">
             <button class="small-btn secondary" type="submit">전송</button>
           </form>
         </div>
@@ -2391,15 +2439,33 @@
       return { ok: true, matched, points: guess.points, rank: guess.rank };
     }
 
+    function refocusAnswerInput(input) {
+      requestAnimationFrame(() => {
+        if (!input || input.disabled || !input.offsetParent) return;
+        try {
+          input.focus({ preventScroll: true });
+        } catch (error) {
+          input.focus();
+        }
+      });
+    }
+
     async function submitAnswer(event) {
       event.preventDefault();
       const input = document.querySelector("#answerInput");
       const text = input.value.trim();
-      if (!text || !state.room || state.role !== "student") return;
-      if (state.room.status !== "game") return;
+      if (!text || !state.room || state.role !== "student") {
+        refocusAnswerInput(input);
+        return;
+      }
+      if (state.room.status !== "game") {
+        refocusAnswerInput(input);
+        return;
+      }
       if (isBlockedAnswer(text)) {
         input.value = "";
         showToast("수업에 맞지 않는 표현은 전송되지 않습니다.");
+        refocusAnswerInput(input);
         return;
       }
       input.value = "";
@@ -2431,6 +2497,7 @@
             storeRoomSnapshot(result.snapshot.val());
           }
           if (feedback) showToast(feedback);
+          refocusAnswerInput(input);
           return;
         } catch (error) {
           reportFirebaseError("answer", error);
@@ -2443,6 +2510,7 @@
           return false;
         }
       });
+      refocusAnswerInput(input);
     }
 
     function resetCanvas() {

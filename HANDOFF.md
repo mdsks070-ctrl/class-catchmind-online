@@ -276,3 +276,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Student join now retries the Firebase transaction before falling back to local state and background resync.
 - The join/create buttons are temporarily disabled while the operation is in progress to prevent duplicate actions.
 - Verified with a Firebase multi-context E2E test: teacher/admin/student 12/13/14 all reached online sync, student 13 scored 100, student 14 scored 90 during the 5-second countdown, round 2 auto-started, and student 14 rejoined with the 90-point score preserved.
+
+## 2026-07-09 Answer Input Dock
+
+- Removed the unused `학생 답변이 여기에 쌓입니다.` helper text from the answer panel.
+- Guessing students now get a large fixed answer bar at the bottom of the screen in both portrait and landscape layouts.
+- The answer input keeps focus after submit so students can type several guesses quickly.
+- Verified with an automated Chrome UI test: portrait and landscape answer bars stayed inside the viewport, input and send button remained aligned, and focus returned to the answer field after submission.
