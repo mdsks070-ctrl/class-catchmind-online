@@ -932,17 +932,15 @@
       gap: 8px;
     }
 
-    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .page {
-      padding-bottom: calc(102px + env(safe-area-inset-bottom));
-    }
-
     body[data-role="student"][data-status="game"] {
       overflow: auto;
     }
 
     body[data-role="student"][data-status="game"] .game-screen {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) 0;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 10px;
+      height: calc(100vh - 36px);
       min-height: calc(100vh - 36px);
     }
 
@@ -951,7 +949,12 @@
     }
 
     body[data-role="student"][data-status="game"] .draw-panel {
+      grid-template-rows: auto minmax(0, 1fr) auto;
       min-height: calc(100vh - 36px);
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-panel {
+      min-height: 0;
     }
 
     body[data-role="student"][data-status="game"] .draw-top {
@@ -980,32 +983,29 @@
     }
 
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
-      position: fixed;
-      left: 50%;
-      bottom: max(12px, env(safe-area-inset-bottom));
-      z-index: 30;
-      width: min(720px, calc(100vw - 24px));
-      padding: 10px;
-      transform: translateX(-50%);
+      position: static;
+      width: 100%;
+      padding: 12px;
+      transform: none;
       border: 2px solid #caa96a;
-      border-radius: 16px;
+      border-radius: 18px;
       background: rgba(255, 253, 247, .98);
       box-shadow: 0 14px 32px rgba(43, 34, 18, .22);
     }
 
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form {
       display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 84px;
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) 104px;
+      gap: 10px;
     }
 
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput {
-      min-height: 58px;
-      padding: 0 16px;
+      min-height: 70px;
+      padding: 0 18px;
       border-color: #caa96a;
-      border-radius: 13px;
+      border-radius: 16px;
       background: #ffffff;
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 900;
     }
 
@@ -1016,10 +1016,10 @@
     }
 
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form .small-btn {
-      min-height: 58px;
-      padding: 0 14px;
-      border-radius: 13px;
-      font-size: 16px;
+      min-height: 70px;
+      padding: 0 16px;
+      border-radius: 16px;
+      font-size: 18px;
     }
 
     .empty {
@@ -1154,10 +1154,6 @@
         padding: 8px;
       }
 
-      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .page {
-        padding-bottom: calc(78px + env(safe-area-inset-bottom));
-      }
-
       .screen {
         min-height: calc(100vh - 16px);
       }
@@ -1166,6 +1162,12 @@
         gap: 8px;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(220px, calc(100vh - 128px)) 0;
+        min-height: calc(100vh - 16px);
+      }
+
+      body[data-role="student"][data-status="game"] .game-screen {
+        grid-template-rows: minmax(0, 1fr) auto;
+        height: calc(100vh - 16px);
         min-height: calc(100vh - 16px);
       }
 
@@ -1225,6 +1227,10 @@
         min-height: calc(100vh - 16px);
       }
 
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-panel {
+        min-height: 0;
+      }
+
       .draw-title {
         font-size: 14px;
       }
@@ -1250,12 +1256,8 @@
       }
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
-        position: fixed;
-        left: 8px;
-        right: 8px;
-        bottom: max(8px, env(safe-area-inset-bottom));
-        z-index: 30;
-        width: auto;
+        position: static;
+        width: 100%;
         padding: 8px;
         transform: none;
         border: 2px solid #caa96a;
@@ -1266,12 +1268,12 @@
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form {
         display: grid !important;
-        grid-template-columns: minmax(0, 1fr) 76px;
+        grid-template-columns: minmax(0, 1fr) 92px;
       }
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput,
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form .small-btn {
-        min-height: 46px;
+        min-height: 58px;
       }
     }
   </style>
