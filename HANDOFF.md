@@ -247,3 +247,13 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Students still see their own submitted text, and other students' entries appear as `답안 제출됨` or `정답 n등 +점수`.
 - Teacher game view and admin view still show the raw answer text for supervision.
 - Verified with an automated multi-tab E2E test: student 13 answered correctly, student 14 saw only `정답 1등 +100점`, teacher/admin saw the raw selected word.
+
+## 2026-07-09 Round And Answer Reliability
+
+- Student heartbeat no longer bumps the room-wide `updatedAt`, preventing stale local snapshots from blocking Firebase round/answer updates.
+- Remote room updates are accepted when round, guesses, winners, strokes, reveal state, or drawer state differ, even if a stale local timestamp is newer.
+- `nextRound()` now checks the expected round/status inside the transaction, preventing double-click or admin/teacher simultaneous clicks from skipping a round.
+- Admin window now has `정답 공개` and `다음 문제/게임 시작/결과 보기` controls.
+- Teacher/admin answer logs now show `정답 인정` for unscored guesses; accepting a guess awards rank-based points through the same scoring helper as auto scoring.
+- Manual answer mode label changed to `교사 확인 후 인정`.
+- Verified with a Firebase multi-context E2E test: admin started game, student 13 auto-scored 100, student 14 was manually accepted for 90, simultaneous teacher/admin next clicks advanced only to round 2.
