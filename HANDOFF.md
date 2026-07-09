@@ -234,3 +234,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Teacher game controls now include `그릴 학생 바꾸기`; the admin panel also has `그리기 지정`.
 - Changing the drawer clears the current canvas so two students' drawings do not mix.
 - Verified with an automated multi-tab E2E test: teacher + students 12/13/14, first drawer 12, correct answer score 100 for 13, drawer switched to 13, admin drawer badge visible.
+
+## 2026-07-09 Landscape Answer Fix
+
+- Small mobile landscape screens now pin the student answer form to the bottom of the viewport while the student is a guesser.
+- Drawer students still do not see the answer form; their drawing toolbar stays available.
+- Verified with an automated 844x390 landscape E2E test: answer input visible inside viewport, fixed bottom bar active, answer submission scored correctly.
