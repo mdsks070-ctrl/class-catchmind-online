@@ -2024,7 +2024,7 @@
           <div class="stack" id="teacherControls">
             <div class="mini-grid">
               <button class="small-btn good" id="nextRoundBtn">다음 문제</button>
-              <button class="small-btn warn" id="revealAnswerBtn">5초 후 넘기기</button>
+              <button class="small-btn warn" id="revealAnswerBtn">5초 후 정답 공개</button>
             </div>
             <div class="mini-grid">
               <button class="small-btn secondary" id="changeDrawerBtn">그릴 학생 바꾸기</button>
@@ -2099,7 +2099,7 @@
             <small id="adminSecretHint">교사 진행 화면에는 제시어가 보이지 않습니다.</small>
           </div>
           <div class="mini-grid" id="adminRoundActions">
-            <button class="small-btn warn" id="adminRevealBtn">5초 후 넘기기</button>
+            <button class="small-btn warn" id="adminRevealBtn">5초 후 정답 공개</button>
             <button class="small-btn good" id="adminNextRoundBtn">다음 문제</button>
           </div>
           <div class="admin-list" id="adminPlayers"></div>
@@ -2179,6 +2179,8 @@
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const rankScores = [100, 90, 80, 70, 60, 50];
     const autoAdvanceDelayMs = 5000;
+    const answerRevealDelayMs = 3000;
+    const remotePollMs = 1200;
     const fallbackWords = [
       "사과", "바나나", "수박", "딸기", "아이스크림", "떡볶이", "라면", "김밥", "피자", "햄버거", "케이크", "우산",
       "고양이", "강아지", "토끼", "판다", "펭귄", "사자", "코끼리", "기린", "돌고래", "공룡", "나비", "꿀벌",
@@ -2228,9 +2230,11 @@
       lastSoundKey: "",
       roundAdvanceBusy: false,
       autoRevealBusy: false,
+      remotePollBusy: false,
       timerTick: null,
       heartbeatTick: null,
-      roomTick: null
+      roomTick: null,
+      remotePollTick: null
     };
 
     initFirebase();
@@ -3212,9 +3216,12 @@
       clearInterval(state.heartbeatTick);
       clearInterval(state.roomTick);
       clearInterval(state.timerTick);
+      clearInterval(state.remotePollTick);
       state.heartbeatTick = null;
       state.roomTick = null;
       state.timerTick = null;
+      state.remotePollTick = null;
+      state.remotePollBusy = false;
     }
 
     function heartbeat() {
@@ -3242,6 +3249,18 @@
       storeRoomSnapshot(room);
     }
 
+    async function pollRemoteRoom() {
+      if (state.testMode || !hasFirebase() || !state.roomCode || state.remotePollBusy) return;
+      state.remotePollBusy = true;
+      try {
+        const local = readRoom();
+        const remote = await fetchRemoteRoom(state.roomCode);
+        if (remote && shouldAcceptRemoteRoom(local, remote)) storeRoomSnapshot(remote);
+      } finally {
+        state.remotePollBusy = false;
+      }
+    }
+
     function startRoomLoops() {
       stopRoomLoops();
       if (state.testMode) {
@@ -3257,6 +3276,10 @@
         }
       }, 500);
       state.timerTick = setInterval(renderTimer, 250);
+      if (!state.testMode && hasFirebase()) {
+        state.remotePollTick = setInterval(pollRemoteRoom, remotePollMs);
+        setTimeout(pollRemoteRoom, 250);
+      }
       if (state.role === "student") {
         state.heartbeatTick = setInterval(heartbeat, 2500);
         heartbeat();
@@ -3417,6 +3440,22 @@
       if (!room || room.status !== "game" || room.autoAdvanceAt) return;
       room.autoAdvanceAt = Date.now() + autoAdvanceDelayMs;
       room.autoAdvanceReason = reason;
+    }
+
+    async function revealAnswerBeforeAdvance() {
+      if (state.autoRevealBusy) return;
+      state.autoRevealBusy = true;
+      try {
+        await transactRoom((room) => {
+          if (room.status !== "game" || !room.autoAdvanceAt || room.autoAdvanceReason === "answer") return false;
+          if (room.autoAdvanceAt > Date.now()) return false;
+          room.reveal = true;
+          room.autoAdvanceAt = Date.now() + answerRevealDelayMs;
+          room.autoAdvanceReason = "answer";
+        }, "answer reveal");
+      } finally {
+        state.autoRevealBusy = false;
+      }
     }
 
     function acceptGuessForScore(room, guess) {
@@ -3829,23 +3868,33 @@
       }
       if (room.status === "game" && room.autoAdvanceAt) {
         const nextIn = Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000));
-        const countdownMax = Math.max(1, Math.ceil(autoAdvanceDelayMs / 1000));
+        const isAnswerReveal = room.autoAdvanceReason === "answer";
+        const countdownMax = Math.max(1, Math.ceil((isAnswerReveal ? answerRevealDelayMs : autoAdvanceDelayMs) / 1000));
         const countdownDeg = Math.max(0, Math.min(1, nextIn / countdownMax)) * 360;
-        document.querySelector("#timerTitle").textContent = room.autoAdvanceReason === "correct" ? "1등 정답" : "다음 문제 준비";
+        document.querySelector("#timerTitle").textContent = isAnswerReveal ? "정답 공개" : room.autoAdvanceReason === "correct" ? "1등 정답" : "다음 문제 준비";
         document.querySelector("#timerText").textContent = String(nextIn);
         if (drawMeta) {
-          drawMeta.textContent = room.autoAdvanceReason === "correct"
+          drawMeta.textContent = isAnswerReveal
+            ? `정답 공개 · ${nextIn}초 뒤 다음 문제`
+            : room.autoAdvanceReason === "correct"
             ? `1등 정답 · ${nextIn}초 뒤 다음 문제`
             : `${nextIn}초 뒤 다음 문제`;
         }
         circle.style.setProperty("--timer-deg", `${countdownDeg}deg`);
         circle.style.background = `conic-gradient(var(--blue) var(--timer-deg), #e6d7b5 0)`;
         document.querySelector("#timerSub").textContent = nextIn
-          ? room.autoAdvanceReason === "correct"
+          ? isAnswerReveal
+            ? `정답: ${currentWord(room) || "확인 중"} · ${nextIn}초 후 다음 문제로 넘어갑니다.`
+            : room.autoAdvanceReason === "correct"
             ? `${nextIn}초 안에 더 맞히면 순위 점수를 받을 수 있습니다. 정답은 공개하지 않습니다.`
             : `${nextIn}초 후 다음 문제로 넘어갑니다.`
-          : "다음 문제로 넘어갑니다.";
-        if (nextIn <= 0) nextRound();
+          : isAnswerReveal
+            ? "다음 문제로 넘어갑니다."
+            : "정답을 공개합니다.";
+        if (nextIn <= 0) {
+          if (isAnswerReveal) nextRound();
+          else revealAnswerBeforeAdvance();
+        }
         return;
       }
       const correctCount = (room.roundWinners || []).length;
