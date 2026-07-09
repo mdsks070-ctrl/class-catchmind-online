@@ -267,3 +267,12 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The old `정답 보기/정답 공개` buttons now read `5초 후 넘기기` and start the same countdown without revealing the prompt.
 - Timeout also starts the countdown without revealing the prompt.
 - Verified with a Firebase multi-context E2E test: student 13 got 100, student 14 got 90 during countdown, student view kept the prompt hidden, then round 2 loaded a new prompt.
+
+## 2026-07-09 Connection Reliability Hardening
+
+- Added visible Firebase sync status badges in the lobby, game, and admin screens.
+- Room creation now waits for the first remote Firebase write before announcing that the room is ready.
+- Student join and admin URL hydration now retry remote reads several times before showing a room-code failure.
+- Student join now retries the Firebase transaction before falling back to local state and background resync.
+- The join/create buttons are temporarily disabled while the operation is in progress to prevent duplicate actions.
+- Verified with a Firebase multi-context E2E test: teacher/admin/student 12/13/14 all reached online sync, student 13 scored 100, student 14 scored 90 during the 5-second countdown, round 2 auto-started, and student 14 rejoined with the 90-point score preserved.
