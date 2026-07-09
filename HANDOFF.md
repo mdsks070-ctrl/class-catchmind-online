@@ -351,3 +351,12 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The admin/operation window now has a `현재 제시어` card that shows the live prompt.
 - The drawing student still sees the prompt so they can draw.
 - Verified with an automated Chrome UI test: teacher view showed `가려진 제시어`, admin view showed `바나나`, and drawer view still showed `바나나`.
+
+## 2026-07-09 Sync Polling And Answer Reveal
+
+- Added a 1.2-second Firebase remote polling fallback alongside the realtime watcher so rooms recover faster when `on("value")` updates lag.
+- First-correct, manual, and timeout countdowns now reveal the answer after the 5-second answer window instead of jumping directly to the next prompt.
+- Revealed answers stay visible for 3 seconds, then any connected game screen can advance the round through the existing transaction guards.
+- Because `room.reveal` is true during the reveal phase, late submissions no longer score after the answer is shown.
+- Updated the teacher/admin control label from `5초 후 넘기기` to `5초 후 정답 공개`.
+- Verified with an automated Chrome E2E test: after a correct answer, the remaining student screen drove `correct -> answer reveal`, showed `apple` with timer title `정답 공개`, then advanced to round 2.
