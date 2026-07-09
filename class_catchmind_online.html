@@ -303,6 +303,32 @@
       white-space: nowrap;
     }
 
+    .connection-pill {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 28px;
+      padding: 5px 10px;
+      border: 2px solid #ecdcbf;
+      border-radius: 999px;
+      background: #fffdf7;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .connection-pill.online {
+      border-color: rgba(28, 155, 114, .35);
+      background: #e8f7ef;
+      color: #12613f;
+    }
+
+    .connection-pill.offline {
+      border-color: rgba(222, 77, 87, .35);
+      background: #ffe9e7;
+      color: #a33b34;
+    }
+
     .status-line {
       color: var(--muted);
       font-size: 12px;
@@ -1178,6 +1204,7 @@
           <p class="subtle" id="lobbyGuide">학생들에게 이 코드를 알려주세요.</p>
           <div class="room-code" id="roomCodeText">----</div>
           <span class="join-link" id="joinLinkText">참여 링크 준비 중</span>
+          <span class="connection-pill" data-connection-status>연결 확인 중</span>
           <div class="stat-row">
             <div class="stat"><span>선생님</span><strong id="lobbyTeacherName">-</strong></div>
             <div class="stat"><span>학생</span><strong id="lobbyStudentCount">0</strong></div>
@@ -1199,6 +1226,7 @@
         <div class="panel-head">
           <h2>진행판</h2>
           <p id="roomMiniInfo">방 코드 ----</p>
+          <p><span class="connection-pill" data-connection-status>연결 확인 중</span></p>
         </div>
         <div class="panel-body">
           <div class="round-card">
@@ -1284,6 +1312,7 @@
         <div class="panel-head">
           <h2>운영창</h2>
           <p id="adminRoomInfo">방 코드 ----</p>
+          <p><span class="connection-pill" data-connection-status>연결 확인 중</span></p>
         </div>
         <div class="panel-body">
           <div class="stat-row">
@@ -1343,7 +1372,11 @@
       roomRef: null,
       roomHandler: null,
       watchCode: null,
-      warned: false
+      warned: false,
+      connected: false,
+      lastConnectedAt: 0,
+      connectionRef: null,
+      connectionHandler: null
     };
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const rankScores = [100, 90, 80, 70, 60, 50];
@@ -1398,6 +1431,7 @@
       try {
         firebaseState.app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
         firebaseState.db = firebase.database();
+        startConnectionWatch();
       } catch (error) {
         console.warn("Firebase init failed", error);
       }
@@ -1412,6 +1446,38 @@
       return firebaseState.db.ref(`rooms/${String(code).toUpperCase()}`);
     }
 
+    function updateConnectionStatus() {
+      const connected = hasFirebase() && firebaseState.connected;
+      const label = !hasFirebase()
+        ? "로컬 모드"
+        : connected
+          ? "온라인 동기화"
+          : firebaseState.lastConnectedAt
+            ? "재연결 중"
+            : "연결 확인 중";
+      document.querySelectorAll("[data-connection-status]").forEach((element) => {
+        element.textContent = label;
+        element.classList.toggle("online", connected);
+        element.classList.toggle("offline", hasFirebase() && !connected);
+      });
+    }
+
+    function startConnectionWatch() {
+      if (!hasFirebase() || firebaseState.connectionRef) return;
+      const ref = firebaseState.db.ref(".info/connected");
+      const handler = (snapshot) => {
+        firebaseState.connected = snapshot.val() === true;
+        if (firebaseState.connected) {
+          firebaseState.warned = false;
+          firebaseState.lastConnectedAt = Date.now();
+        }
+        updateConnectionStatus();
+      };
+      firebaseState.connectionRef = ref;
+      firebaseState.connectionHandler = handler;
+      ref.on("value", handler, (error) => reportFirebaseError("connection", error));
+    }
+
     function reportFirebaseError(action, error) {
       console.warn(`Firebase ${action} failed`, error);
       if (firebaseState.warned) return;
@@ -1419,22 +1485,91 @@
       showToast("Firebase 연결이 불안정해 로컬 상태로 이어갑니다.", "firebase-offline");
     }
 
-    function saveRemoteRoom(room) {
-      const ref = firebaseRoomRef(room?.code);
-      if (!ref) return;
-      ref.set(room).catch((error) => reportFirebaseError("save", error));
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    async function fetchRemoteRoom(code) {
+    async function waitForFirebaseConnected(timeoutMs = 3500) {
+      if (!hasFirebase()) return false;
+      if (firebaseState.connected) return true;
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        await delay(120);
+        if (firebaseState.connected) return true;
+      }
+      return false;
+    }
+
+    async function writeRemoteRoom(room, attempts = 4) {
+      const ref = firebaseRoomRef(room?.code);
+      if (!ref) return false;
+      let lastError = null;
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+          await waitForFirebaseConnected(attempt === 1 ? 3500 : 1200);
+          await ref.set(room);
+          firebaseState.warned = false;
+          return true;
+        } catch (error) {
+          lastError = error;
+          await delay(250 * attempt);
+        }
+      }
+      reportFirebaseError("save", lastError);
+      return false;
+    }
+
+    async function joinRemoteRoom(code, fallbackRoom, student, now, attempts = 4) {
+      const ref = firebaseRoomRef(code);
+      if (!ref) return { room: null, missingRoom: false };
+      let lastError = null;
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        let missingRoom = false;
+        try {
+          await waitForFirebaseConnected(attempt === 1 ? 2500 : 1000);
+          const result = await ref.transaction((current) => {
+            const draft = normalizeRoom(current || fallbackRoom);
+            if (!draft?.code) {
+              missingRoom = true;
+              return undefined;
+            }
+            upsertStudent(draft, student, now);
+            draft.updatedAt = Date.now();
+            return draft;
+          }, undefined, false);
+          const value = result?.snapshot?.val();
+          if (value) return { room: storeRoomSnapshot(value), missingRoom: false };
+          if (missingRoom) return { room: null, missingRoom: true };
+        } catch (error) {
+          lastError = error;
+        }
+        await delay(250 * attempt);
+      }
+      if (lastError) reportFirebaseError("join", lastError);
+      return { room: null, missingRoom: false };
+    }
+
+    function saveRemoteRoom(room) {
+      writeRemoteRoom(room).catch((error) => reportFirebaseError("save", error));
+    }
+
+    async function fetchRemoteRoom(code, attempts = 1) {
       const ref = firebaseRoomRef(code);
       if (!ref) return null;
-      try {
-        const snapshot = await ref.once("value");
-        return normalizeRoom(snapshot.val());
-      } catch (error) {
-        reportFirebaseError("read", error);
-        return null;
+      let lastError = null;
+      for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+          await waitForFirebaseConnected(attempt === 1 ? 2500 : 900);
+          const snapshot = await ref.once("value");
+          const room = normalizeRoom(snapshot.val());
+          if (room || attempt === attempts) return room;
+        } catch (error) {
+          lastError = error;
+        }
+        await delay(300 * attempt);
       }
+      if (lastError) reportFirebaseError("read", lastError);
+      return null;
     }
 
     function stopFirebaseWatch() {
@@ -1672,9 +1807,9 @@
       }
     }
 
-    async function loadLatestRoom(code) {
+    async function loadLatestRoom(code, attempts = 1) {
       const local = readRoom(code);
-      const remote = await fetchRemoteRoom(code);
+      const remote = await fetchRemoteRoom(code, attempts);
       const latest = remote && shouldAcceptRemoteRoom(local, remote) ? remote : local;
       if (latest?.code) localStorage.setItem(roomKey(latest.code), JSON.stringify(latest));
       return latest;
@@ -1891,101 +2026,111 @@
       playTone(type);
     }
 
-    function createRoom() {
-      const teacherName = clampName(document.querySelector("#teacherName").value, "선생님");
-      const duration = Number(document.querySelector("#roundTime").value);
-      const answerMode = document.querySelector("#answerMode").value;
-      const roundLimit = Number(document.querySelector("#roundLimit").value);
-      const soundOn = document.querySelector("#soundMode").value === "on";
-      const words = splitWords(document.querySelector("#wordList").value);
-      const code = makeRoomCode();
-      const now = Date.now();
-      const room = {
-        code,
-        teacherId: state.clientId,
-        teacherName,
-        duration,
-        answerMode,
-        roundLimit,
-        soundOn,
-        words,
-        used: [],
-        status: "lobby",
-        round: 0,
-        currentWordIndex: -1,
-        drawerId: "",
-        roundStartedAt: null,
-        autoAdvanceAt: null,
-        solvedBy: null,
-        reveal: false,
-        clearId: 0,
-        strokes: [],
-        guesses: [],
-        roundWinners: [],
-        players: {},
-        createdAt: now,
-        updatedAt: now
-      };
-      state.role = "teacher";
-      state.roomCode = code;
-      state.name = teacherName;
-      saveRoom(room);
-      startRoomLoops();
-      showScreen("lobby");
-      showToast("방을 만들었습니다.");
+    async function createRoom() {
+      const button = document.querySelector("#createRoomBtn");
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = "방 만드는 중...";
+      try {
+        const teacherName = clampName(document.querySelector("#teacherName").value, "선생님");
+        const duration = Number(document.querySelector("#roundTime").value);
+        const answerMode = document.querySelector("#answerMode").value;
+        const roundLimit = Number(document.querySelector("#roundLimit").value);
+        const soundOn = document.querySelector("#soundMode").value === "on";
+        const words = splitWords(document.querySelector("#wordList").value);
+        const code = makeRoomCode();
+        const now = Date.now();
+        const room = {
+          code,
+          teacherId: state.clientId,
+          teacherName,
+          duration,
+          answerMode,
+          roundLimit,
+          soundOn,
+          words,
+          used: [],
+          status: "lobby",
+          round: 0,
+          currentWordIndex: -1,
+          drawerId: "",
+          roundStartedAt: null,
+          autoAdvanceAt: null,
+          solvedBy: null,
+          reveal: false,
+          clearId: 0,
+          strokes: [],
+          guesses: [],
+          roundWinners: [],
+          players: {},
+          createdAt: now,
+          updatedAt: now
+        };
+        state.role = "teacher";
+        state.roomCode = code;
+        state.name = teacherName;
+        const localRoom = saveLocalRoom(room);
+        const remoteReady = hasFirebase() ? await writeRemoteRoom(localRoom, 5) : true;
+        startRoomLoops();
+        showScreen("lobby");
+        updateConnectionStatus();
+        showToast(remoteReady ? "방을 만들었습니다." : "방은 만들었지만 온라인 연결을 재시도 중입니다.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     }
 
     async function joinRoom() {
+      const button = document.querySelector("#joinRoomBtn");
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = "입장 중...";
       const code = document.querySelector("#studentCode").value.trim().toUpperCase();
       const student = readStudentIdentity();
-      if (!student) return;
-      if (!code || code.length !== 4) {
-        showToast("방 코드는 4자리로 입력해주세요.");
-        return;
-      }
-      let room = await loadLatestRoom(code);
-      if (!room) {
-        showToast("방 코드를 다시 확인해주세요.");
-        return;
-      }
-      const now = Date.now();
-      if (hasFirebase()) {
-        let missingRoom = false;
-        try {
-          const result = await firebaseRoomRef(code).transaction((current) => {
-            const draft = normalizeRoom(current || room);
-            if (!draft?.code) {
-              missingRoom = true;
-              return undefined;
-            }
-            upsertStudent(draft, student, now);
-            draft.updatedAt = Date.now();
-            return draft;
-          }, undefined, false);
-          if (result?.snapshot?.val()) {
-            room = storeRoomSnapshot(result.snapshot.val());
-          } else if (missingRoom) {
+      try {
+        if (!student) return;
+        if (!code || code.length !== 4) {
+          showToast("방 코드는 4자리로 입력해주세요.");
+          return;
+        }
+        let room = await loadLatestRoom(code, 5);
+        if (!room) {
+          showToast(hasFirebase() && !firebaseState.connected ? "온라인 연결을 확인한 뒤 다시 입장해 주세요." : "방 코드를 다시 확인해주세요.");
+          return;
+        }
+        const now = Date.now();
+        if (hasFirebase()) {
+          const result = await joinRemoteRoom(code, room, student, now, 4);
+          if (result.room) {
+            room = result.room;
+          } else if (result.missingRoom) {
             showToast("방 코드를 다시 확인해주세요.");
             return;
+          } else {
+            upsertStudent(room, student, now);
+            room = saveLocalRoom(room);
+            saveRemoteRoom(room);
+            showToast("온라인 연결이 불안정해 재동기화를 시도합니다.");
           }
-        } catch (error) {
-          reportFirebaseError("join", error);
+        } else {
           upsertStudent(room, student, now);
           saveRoom(room);
         }
-      } else {
-        upsertStudent(room, student, now);
+        state.role = "student";
+        state.roomCode = code;
+        state.playerId = student.id;
+        state.name = student.name;
+        saveStudentIdentity(student);
         saveRoom(room);
+        startRoomLoops();
+        showScreen(room.status === "game" ? "game" : "lobby");
+        updateConnectionStatus();
+        showToast(`${student.name}으로 참여했습니다.`);
+      } finally {
+        button.disabled = false;
+        button.textContent = originalLabel;
       }
-      state.role = "student";
-      state.roomCode = code;
-      state.playerId = student.id;
-      state.name = student.name;
-      saveStudentIdentity(student);
-      saveRoom(room);
-      startRoomLoops();
-      showScreen(room.status === "game" ? "game" : "lobby");
-      showToast(`${student.name}으로 참여했습니다.`);
     }
 
     function heartbeat() {
@@ -2398,6 +2543,7 @@
     }
 
     function render() {
+      updateConnectionStatus();
       const room = state.room;
       if (!room) return;
       if (state.role !== "admin") {
@@ -2797,7 +2943,7 @@
       if (code && params.get("admin") === "1") {
         state.role = "admin";
         state.roomCode = code.toUpperCase();
-        const room = await loadLatestRoom(state.roomCode);
+        const room = await loadLatestRoom(state.roomCode, 5);
         if (room) {
           state.room = room;
           startRoomLoops();
