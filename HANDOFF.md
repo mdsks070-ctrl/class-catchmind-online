@@ -283,3 +283,12 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Guessing students now get a large fixed answer bar at the bottom of the screen in both portrait and landscape layouts.
 - The answer input keeps focus after submit so students can type several guesses quickly.
 - Verified with an automated Chrome UI test: portrait and landscape answer bars stayed inside the viewport, input and send button remained aligned, and focus returned to the answer field after submission.
+
+## 2026-07-09 Reference-Style Student UI And QR Entry
+
+- Student game screens now hide the teacher-style progress panel and answer log, leaving the drawing area, drawer identity, timer meta, and answer dock.
+- The drawing canvas shows a prominent drawer banner so students can immediately see who is drawing.
+- Drawer students see `내 차례` and do not see the answer panel.
+- The lobby now shows a QR code for the room join URL. Students who open the QR link skip room-code entry and only enter class/number.
+- Removed the technical Firebase explanation from the home screen.
+- Verified with an automated Chrome E2E test: QR URL included the room code, room-link entry hid the code field, guesser UI hid extra panels, drawer banner was visible, and drawer UI did not show the answer panel.
