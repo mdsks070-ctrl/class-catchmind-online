@@ -317,7 +317,7 @@
 
     .player-pill {
       display: grid;
-      grid-template-columns: 30px minmax(0, 1fr) auto;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
       gap: 8px;
       align-items: center;
       min-height: 44px;
@@ -329,13 +329,13 @@
 
     .avatar {
       display: grid;
-      width: 30px;
+      width: 34px;
       height: 30px;
       place-items: center;
-      border-radius: 50%;
+      border-radius: 999px;
       background: var(--teal);
       color: #fff;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 900;
     }
 
@@ -869,15 +869,26 @@
       <div class="form-card">
         <h2 class="card-title">학생 참여</h2>
         <div class="stack">
-          <div class="field">
-            <label for="studentName">이름</label>
-            <input id="studentName" type="text" maxlength="14" placeholder="예: 지우">
+          <div class="stat-row">
+            <div class="stat"><span>학년</span><strong>6학년</strong></div>
+            <div class="stat"><span>입장</span><strong>반</strong></div>
+            <div class="stat"><span>확인</span><strong>번호</strong></div>
+          </div>
+          <div class="two-col">
+            <div class="field">
+              <label for="studentClass">반</label>
+              <input id="studentClass" type="number" min="1" max="20" inputmode="numeric" placeholder="예: 3">
+            </div>
+            <div class="field">
+              <label for="studentNumber">번호</label>
+              <input id="studentNumber" type="number" min="1" max="40" inputmode="numeric" placeholder="예: 12">
+            </div>
           </div>
           <div class="field">
             <label for="studentCode">방 코드</label>
             <input id="studentCode" type="text" maxlength="4" placeholder="예: A1B2">
           </div>
-          <p class="subtle">태블릿은 가로 모드가 가장 편해요. 정답은 수업에 맞는 표현만 전송됩니다.</p>
+          <p class="subtle">6학년은 고정입니다. 교사 화면에는 반과 번호로 표시됩니다.</p>
           <button class="big-btn secondary" id="joinRoomBtn">참여하기</button>
           <button class="small-btn" data-nav="home">처음으로</button>
         </div>
@@ -1022,11 +1033,13 @@
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const fallbackWords = ["사과", "고양이", "학교", "우산", "축구공", "떡볶이", "도서관", "로봇", "바닷가", "생일파티", "우주선", "무지개"];
     const blockedAnswerPatterns = [/바보/i, /멍청/i, /죽어/i, /꺼져/i];
+    const fixedGrade = 6;
 
     const state = {
       role: null,
       roomCode: null,
       clientId: getClientId(),
+      playerId: "",
       name: "",
       room: null,
       tool: "pen",
@@ -1141,6 +1154,30 @@
       return trimmed || fallback;
     }
 
+    function readStudentIdentity() {
+      const classNo = Number(document.querySelector("#studentClass").value);
+      const number = Number(document.querySelector("#studentNumber").value);
+      if (!Number.isInteger(classNo) || classNo < 1 || classNo > 20) {
+        showToast("반은 숫자로 입력해주세요.");
+        return null;
+      }
+      if (!Number.isInteger(number) || number < 1 || number > 40) {
+        showToast("번호는 숫자로 입력해주세요.");
+        return null;
+      }
+      return {
+        grade: fixedGrade,
+        classNo,
+        number,
+        id: `g${fixedGrade}-c${classNo}-n${number}`,
+        name: `${fixedGrade}학년 ${classNo}반 ${number}번`
+      };
+    }
+
+    function currentPlayerId() {
+      return state.playerId || state.clientId;
+    }
+
     function splitWords(value) {
       const words = String(value || "")
         .split(/[\n,]+/)
@@ -1169,6 +1206,17 @@
       room.strokes = Array.isArray(room.strokes) ? room.strokes : [];
       room.guesses = Array.isArray(room.guesses) ? room.guesses : [];
       room.players = room.players && typeof room.players === "object" ? room.players : {};
+      Object.entries(room.players).forEach(([key, player]) => {
+        if (!player || typeof player !== "object") {
+          delete room.players[key];
+          return;
+        }
+        player.id = player.id || key;
+        player.name = clampName(player.name, "학생");
+        player.score = Number(player.score) || 0;
+        player.joinedAt = Number(player.joinedAt) || Date.now();
+        player.lastSeen = Number(player.lastSeen) || 0;
+      });
       room.duration = Number(room.duration) || 120;
       room.roundLimit = Number(room.roundLimit) || 5;
       room.round = Number(room.round) || 0;
@@ -1232,6 +1280,9 @@
       if (!room) return [];
       return Object.values(room.players || {}).sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
+        if ((a.grade || 999) !== (b.grade || 999)) return (a.grade || 999) - (b.grade || 999);
+        if ((a.classNo || 999) !== (b.classNo || 999)) return (a.classNo || 999) - (b.classNo || 999);
+        if ((a.number || 999) !== (b.number || 999)) return (a.number || 999) - (b.number || 999);
         return a.joinedAt - b.joinedAt;
       });
     }
@@ -1339,7 +1390,12 @@
 
     async function joinRoom() {
       const code = document.querySelector("#studentCode").value.trim().toUpperCase();
-      const name = clampName(document.querySelector("#studentName").value, "학생");
+      const student = readStudentIdentity();
+      if (!student) return;
+      if (!code || code.length !== 4) {
+        showToast("방 코드는 4자리로 입력해주세요.");
+        return;
+      }
       let room = readRoom(code);
       if (!room) {
         room = await fetchRemoteRoom(code);
@@ -1350,28 +1406,35 @@
         return;
       }
       const now = Date.now();
-      room.players[state.clientId] = room.players[state.clientId] || {
-        id: state.clientId,
-        name,
+      room.players[student.id] = room.players[student.id] || {
+        id: student.id,
+        name: student.name,
+        grade: student.grade,
+        classNo: student.classNo,
+        number: student.number,
         score: 0,
         joinedAt: now,
         lastSeen: now
       };
-      room.players[state.clientId].name = name;
-      room.players[state.clientId].lastSeen = now;
+      room.players[student.id].name = student.name;
+      room.players[student.id].grade = student.grade;
+      room.players[student.id].classNo = student.classNo;
+      room.players[student.id].number = student.number;
+      room.players[student.id].lastSeen = now;
       state.role = "student";
       state.roomCode = code;
-      state.name = name;
+      state.playerId = student.id;
+      state.name = student.name;
       saveRoom(room);
       startRoomLoops();
       showScreen(room.status === "game" ? "game" : "lobby");
-      showToast("방에 참여했습니다.");
+      showToast(`${student.name}으로 참여했습니다.`);
     }
 
     function heartbeat() {
       if (state.role !== "student" || !state.roomCode) return;
       mutateRoom((room) => {
-        const player = room.players[state.clientId];
+        const player = room.players[currentPlayerId()];
         if (player) {
           player.lastSeen = Date.now();
           player.name = state.name;
@@ -1490,11 +1553,12 @@
       input.value = "";
       mutateRoom((room) => {
         const word = currentWord(room);
-        const player = room.players[state.clientId];
+        const playerId = currentPlayerId();
+        const player = room.players[playerId];
         const correct = normalize(text) === normalize(word);
         room.guesses.unshift({
           id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
-          playerId: state.clientId,
+          playerId,
           name: player?.name || state.name,
           text,
           correct,
@@ -1502,7 +1566,7 @@
         });
         room.guesses = room.guesses.slice(0, 60);
         if (correct && !room.solvedBy && room.answerMode === "auto") {
-          room.solvedBy = state.clientId;
+          room.solvedBy = playerId;
           room.reveal = true;
           room.autoAdvanceAt = Date.now() + 5000;
           if (player) player.score += Math.max(1, Math.ceil(currentRemaining(room) / 30));
@@ -1643,7 +1707,7 @@
       const active = new Set(activePlayers(room).map((player) => player.id));
       const html = players.length ? players.map((player) => `
         <div class="player-pill">
-          <span class="avatar">${player.name.slice(0, 1)}</span>
+          <span class="avatar">${escapeHtml(player.number || player.name.slice(0, 1))}</span>
           <span class="player-name">${escapeHtml(player.name)}${active.has(player.id) ? "" : " (자리비움)"}</span>
           <span class="score">${player.score}</span>
         </div>
