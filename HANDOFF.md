@@ -69,7 +69,7 @@
 - 교사 설정 화면에서 라운드 수/효과음 옵션 노출 확인
 - 방 생성 및 참여 링크 표시 확인
 - 게임 시작 후 `1 / 5` 라운드 진행 표시 확인
-- 남아 있는 경고는 Realtime Database 미생성으로 인한 Firebase URL 경고이며, 기존 Firebase 이슈와 동일함
+- Firebase Realtime Database 생성 및 `/rooms` 규칙 게시 완료
 
 검증한 것:
 
@@ -86,29 +86,43 @@ Firebase 프로젝트:
 - Firebase 웹 앱 설정값은 `class_catchmind_online.html`에 이미 추가되어 있다.
 - Google Analytics는 이 수업용 앱에 필요하지 않아서 꺼두는 방향으로 진행했다.
 
-막힌 부분:
+완료된 부분:
 
-- Firebase Console에서 Realtime Database 생성을 시도했지만 콘솔 UI 오류가 발생했다.
-- 시도한 지역:
-  - 처음에는 한국과 가까운 `싱가포르(asia-southeast1)` 선택
-  - 이후 기본 `미국(us-central1)`로도 재시도
-- 두 번 모두 콘솔에서 “데이터베이스를 만드는 중에 오류가 발생했습니다. 다시 시도해 주세요.”가 떴다.
-- 그래서 현재 코드는 Firebase 준비가 되어 있지만, 실제 여러 기기 동기화는 Realtime Database 생성이 성공해야 작동한다.
+- Firebase Console에서 Realtime Database를 생성했다.
+- 생성 위치: `미국(us-central1)`
+- DB URL: `https://school-debate-1-default-rtdb.firebaseio.com`
+- 코드의 `databaseURL` 값과 생성된 DB URL이 일치한다.
+- Realtime Database Rules는 앱이 쓰는 `/rooms/{방코드}` 경로만 읽기/쓰기를 허용하고, 루트는 닫아두는 방식으로 게시했다.
+- REST 테스트로 `/rooms/__codex_rule_test__`에 쓰기/읽기/삭제가 모두 `HTTP 200`으로 통과하는 것을 확인했다.
+
+현재 규칙:
+
+```json
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    ".read": false,
+    ".write": false
+  }
+}
+```
 
 다음 Firebase 작업:
 
-1. Firebase Console에서 `school-debate-1` 프로젝트 열기
-2. Realtime Database 메뉴로 이동
-3. 데이터베이스 만들기 재시도
-4. 수업 테스트 단계에서는 테스트 모드로 시작 가능
-5. 생성된 DB URL이 코드의 `databaseURL`과 다르면 `class_catchmind_online.html`에서 수정
-6. 배포 전에는 테스트 모드 공개 규칙을 더 안전하게 바꾸기
+1. 교사 브라우저 1개 + 학생 브라우저/휴대폰 1개로 실제 multi-device 테스트
+2. 수업 전에 방 코드, 닉네임, 그림 데이터가 의도대로 동기화되는지 확인
+3. 실제 배포 전에는 필요하면 Firebase Auth 또는 더 엄격한 Rules 검토
 
 주의:
 
 - Firebase 웹 API key는 브라우저 앱 공개 설정값이라 서버 비밀번호는 아니다.
 - 실제 보안은 Realtime Database Rules에서 해야 한다.
-- 테스트 모드는 30일 제한이며 공개 읽기/쓰기가 될 수 있으므로 학생 개인정보는 넣지 않는 것이 좋다.
+- 현재 `/rooms` 경로는 수업 프로토타입용 공개 읽기/쓰기 상태라 학생 개인정보는 넣지 않는 것이 좋다.
 
 ## GitHub 상태
 
@@ -146,11 +160,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 
 ## 다음 개발 추천 순서
 
-1. Firebase Realtime Database 생성 문제 해결
-2. 교사 브라우저 1개 + 학생 브라우저/휴대폰 1개로 실제 multi-device 테스트
-3. 방 데이터 구조가 안정적이면 Firebase Rules 정리
-4. GitHub Pages, Netlify, Vercel, Firebase Hosting 중 하나로 공개 URL 배포
-5. 수업용 UX 다듬기
+1. 교사 브라우저 1개 + 학생 브라우저/휴대폰 1개로 실제 multi-device 테스트
+2. 방 데이터 구조가 안정적이면 Firebase Rules 정리
+3. GitHub Pages, Netlify, Vercel, Firebase Hosting 중 하나로 공개 URL 배포
+4. 수업용 UX 다듬기
    - 방 코드 크게 표시
    - 학생 입장 QR 코드
    - 정답자 효과
@@ -163,5 +176,5 @@ http://127.0.0.1:8765/class_catchmind_online.html
 다음 프롬프트로 시작하면 된다.
 
 ```text
-이 repo의 HANDOFF.md와 README.md를 먼저 읽고, class_catchmind_online.html의 Firebase Realtime Database 연결을 이어서 완성해줘. 현재 DB 생성이 Firebase Console 오류로 막혔고, 목표는 반에서 여러 기기로 접속하는 캐치마인드식 그림 퀴즈야.
+이 repo의 HANDOFF.md와 README.md를 먼저 읽고, class_catchmind_online.html의 Firebase Realtime Database 연결을 실제 기기 2대로 테스트해줘. 현재 DB는 생성됐고 `/rooms` 규칙은 수업 프로토타입용으로 열려 있으며, 목표는 반에서 여러 기기로 접속하는 캐치마인드식 그림 퀴즈야.
 ```
