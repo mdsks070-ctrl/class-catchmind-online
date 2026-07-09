@@ -317,3 +317,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The answer input now explicitly submits on Enter so keyboard entry behaves like the send button.
 - Admin view now stays on the admin screen when a correct-answer countdown auto-advances to the next round.
 - Verified with automated in-app browser tests: teacher view showed the prompt and drawer, drawer view showed tools and hid the answer form, guesser view submitted `바나나` by Enter for 90 points, admin view stayed open after the 5-second auto-advance, reset restored the sample room, and exit returned to home.
+
+## 2026-07-09 PC Layout Correction
+
+- Desktop game layout now keeps the drawing canvas at the original 14:9 ratio instead of stretching across very wide PC screens.
+- The teacher status board is more compact on desktop: helper text is hidden, cards and timer are tightened, and controls fit in one row.
+- UI test mode no longer consumes a separate top strip on desktop; the switcher is compact and overlays only the status header area.
+- Verified at 1920x900 and 1366x768: no horizontal/vertical page overflow, canvas ratio stayed at 1.556, and the canvas was no longer cut off at the bottom.
