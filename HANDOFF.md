@@ -324,3 +324,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The teacher status board is more compact on desktop: helper text is hidden, cards and timer are tightened, and controls fit in one row.
 - UI test mode no longer consumes a separate top strip on desktop; the switcher is compact and overlays only the status header area.
 - Verified at 1920x900 and 1366x768: no horizontal/vertical page overflow, canvas ratio stayed at 1.556, and the canvas was no longer cut off at the bottom.
+
+## 2026-07-09 UI Test Role Fix
+
+- UI test mode now keeps `6학년 3반 12번` as the drawing student and `6학년 3반 13번` as the guessing student even after the 5-second auto-advance.
+- Teacher view no longer labels the right panel as `정답 입력`; it now reads `답변 로그`, with the answer form hidden.
+- Verified in the in-app browser: teacher had no answer form, drawing student had tools and no answer form, guessing student had answer input and no drawing tools, and the same role split held after auto-advancing to round 2.

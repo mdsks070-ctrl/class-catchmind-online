@@ -1925,7 +1925,7 @@
 
       <aside class="chat-panel">
         <div class="panel-head">
-          <h2>정답 입력</h2>
+          <h2 id="chatPanelTitle">답변 로그</h2>
         </div>
         <div class="panel-body">
           <div class="chat-list" id="chatList"></div>
@@ -2047,6 +2047,8 @@
       guesser: "맞히는 학생",
       admin: "운영창"
     };
+    const uiTestDrawerId = "g6-c3-n12";
+    const uiTestGuesserId = "g6-c3-n13";
 
     const state = {
       role: null,
@@ -2833,6 +2835,21 @@
       return readRoom(uiTestRoomCode) || seedUiTestRoom();
     }
 
+    function lockUiTestDrawer(room) {
+      if (!state.testMode || room?.status !== "game" || !room.players?.[uiTestDrawerId]) return null;
+      room.drawerId = uiTestDrawerId;
+      return room.players[uiTestDrawerId];
+    }
+
+    function saveUiTestRoomSilently(room) {
+      room = normalizeRoom(room);
+      if (!room?.code) return null;
+      room.updatedAt = Date.now();
+      localStorage.setItem(roomKey(room.code), JSON.stringify(room));
+      state.room = room;
+      return room;
+    }
+
     function updateUiTestSwitcher() {
       const switcher = document.querySelector("#testSwitcher");
       if (!switcher) return;
@@ -2852,9 +2869,8 @@
       state.testView = target;
       state.roomCode = uiTestRoomCode;
       stopFirebaseWatch();
-      const room = currentUiTestRoom();
-      const drawerId = "g6-c3-n12";
-      const guesserId = "g6-c3-n13";
+      let room = currentUiTestRoom();
+      if (lockUiTestDrawer(room)) room = saveUiTestRoomSilently(room);
       if (target === "teacher") {
         state.role = "teacher";
         state.playerId = "";
@@ -2866,7 +2882,7 @@
         state.name = "테스트 운영창";
         showScreen("admin");
       } else {
-        const playerId = target === "drawer" ? drawerId : guesserId;
+        const playerId = target === "drawer" ? uiTestDrawerId : uiTestGuesserId;
         const player = room.players[playerId];
         state.role = "student";
         state.playerId = playerId;
@@ -3139,7 +3155,7 @@
           room.strokes = [];
           room.guesses = [];
           room.roundWinners = [];
-          assignDrawerForRound(room);
+          if (!lockUiTestDrawer(room)) assignDrawerForRound(room);
           Object.values(room.players).forEach((player) => {
             player.blockedRound = null;
           });
@@ -3532,7 +3548,9 @@
       document.querySelector("#toolbar").style.display = drawAllowed ? "grid" : "none";
       document.querySelector("#teacherControls").style.display = state.role === "teacher" ? "grid" : "none";
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
-      document.querySelector("#answerForm").style.display = state.role === "student" && room.status === "game" && !currentIsDrawer ? "grid" : "none";
+      const answerFormVisible = state.role === "student" && room.status === "game" && !currentIsDrawer;
+      document.querySelector("#answerForm").style.display = answerFormVisible ? "grid" : "none";
+      document.querySelector("#chatPanelTitle").textContent = answerFormVisible ? "정답 입력" : "답변 로그";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
       document.querySelector("#revealAnswerBtn").disabled = room.status !== "game" || Boolean(room.autoAdvanceAt);
       const currentStudent = room.players[currentPlayerId()];
