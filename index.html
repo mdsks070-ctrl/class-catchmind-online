@@ -55,6 +55,12 @@
       user-select: none;
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      filter: grayscale(.35);
+      opacity: .55;
+    }
+
     input,
     textarea,
     select {
@@ -787,6 +793,19 @@
       font-weight: 800;
     }
 
+    .chat-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .chat-actions .small-btn {
+      min-height: 34px;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
     .private-answer {
       color: var(--muted);
       font-weight: 900;
@@ -1082,7 +1101,7 @@
               <label for="answerMode">정답 처리</label>
               <select id="answerMode">
                 <option value="auto" selected>자동 채점</option>
-                <option value="manual">교사 확인</option>
+                <option value="manual">교사 확인 후 인정</option>
               </select>
             </div>
           </div>
@@ -1272,6 +1291,10 @@
             <div class="stat"><span>참여</span><strong id="adminStudentCount">0</strong></div>
             <div class="stat"><span>정답</span><strong id="adminCorrectCount">0</strong></div>
           </div>
+          <div class="mini-grid" id="adminRoundActions">
+            <button class="small-btn warn" id="adminRevealBtn">정답 공개</button>
+            <button class="small-btn good" id="adminNextRoundBtn">다음 문제</button>
+          </div>
           <div class="admin-list" id="adminPlayers"></div>
         </div>
       </aside>
@@ -1432,7 +1455,7 @@
         const room = normalizeRoom(snapshot.val());
         if (!room?.code) return;
         const local = readRoom(room.code);
-        if (local && Number(local.updatedAt || 0) > Number(room.updatedAt || 0)) return;
+        if (!shouldAcceptRemoteRoom(local, room)) return;
         localStorage.setItem(roomKey(room.code), JSON.stringify(room));
         state.room = room;
         render();
@@ -1550,6 +1573,30 @@
       return storagePrefix + String(code || "").toUpperCase();
     }
 
+    function roomProgressKey(room) {
+      if (!room) return "";
+      return JSON.stringify({
+        status: room.status || "",
+        round: Number(room.round) || 0,
+        currentWordIndex: Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1,
+        clearId: Number(room.clearId) || 0,
+        drawerId: room.drawerId || "",
+        reveal: Boolean(room.reveal),
+        autoAdvanceAt: Number(room.autoAdvanceAt) || null,
+        solvedBy: room.solvedBy || null,
+        strokes: (room.strokes || []).length,
+        winners: room.roundWinners || [],
+        guesses: (room.guesses || []).map((guess) => [guess.id, guess.playerId, Boolean(guess.correct), Number(guess.points) || 0, Number(guess.rank) || 0])
+      });
+    }
+
+    function shouldAcceptRemoteRoom(local, remote) {
+      if (!remote?.code) return false;
+      if (!local?.code) return true;
+      if (Number(remote.updatedAt || 0) >= Number(local.updatedAt || 0)) return true;
+      return roomProgressKey(remote) !== roomProgressKey(local);
+    }
+
     function normalizeRoom(room) {
       if (!room || typeof room !== "object" || !room.code) return null;
       room.code = String(room.code).toUpperCase();
@@ -1625,7 +1672,7 @@
     async function loadLatestRoom(code) {
       const local = readRoom(code);
       const remote = await fetchRemoteRoom(code);
-      const latest = remote && (!local || Number(remote.updatedAt || 0) >= Number(local.updatedAt || 0)) ? remote : local;
+      const latest = remote && shouldAcceptRemoteRoom(local, remote) ? remote : local;
       if (latest?.code) localStorage.setItem(roomKey(latest.code), JSON.stringify(latest));
       return latest;
     }
@@ -1948,17 +1995,15 @@
       player.lastSeen = now;
       player.name = state.name;
       if (hasFirebase()) {
-        const saved = saveLocalRoom(room);
-        const updatedAt = saved?.updatedAt || now;
+        storeRoomSnapshot(room, false);
         const ref = firebaseRoomRef(room.code);
         ref?.update({
           [`players/${playerId}/lastSeen`]: now,
-          [`players/${playerId}/name`]: state.name,
-          updatedAt
+          [`players/${playerId}/name`]: state.name
         }).catch((error) => reportFirebaseError("heartbeat", error));
         return;
       }
-      saveRoom(room);
+      storeRoomSnapshot(room);
     }
 
     function startRoomLoops() {
@@ -2003,8 +2048,12 @@
       state.roundAdvanceBusy = true;
       let blockedMessage = "";
       try {
-        await refreshLatestRoom();
+        const baseRoom = await refreshLatestRoom();
+        const expectedRound = Number(baseRoom?.round) || 0;
+        const expectedStatus = baseRoom?.status || "";
         const updated = await transactRoom((room) => {
+          if (expectedStatus && room.status !== expectedStatus) return false;
+          if (Number(room.round) !== expectedRound) return false;
           if (room.round >= room.roundLimit) {
             finishRoom(room);
             return;
@@ -2119,6 +2168,31 @@
       showToast("그림판을 비웠습니다.");
     }
 
+    function acceptGuessForScore(room, guess) {
+      if (!room || !guess) return { ok: false, message: "정답 기록을 찾을 수 없습니다." };
+      const player = room.players?.[guess.playerId];
+      if (!player) return { ok: false, message: "학생 정보를 찾을 수 없습니다." };
+      const winners = Array.isArray(room.roundWinners) ? room.roundWinners : [];
+      room.roundWinners = winners;
+      const existingRank = winners.indexOf(guess.playerId);
+      if (existingRank >= 0) {
+        guess.correct = true;
+        guess.rank = guess.rank || existingRank + 1;
+        guess.points = guess.points || scoreForRank(existingRank);
+        return { ok: true, duplicate: true, rank: guess.rank, points: guess.points };
+      }
+      const rank = winners.length + 1;
+      const points = scoreForRank(rank - 1);
+      winners.push(guess.playerId);
+      guess.correct = true;
+      guess.rank = rank;
+      guess.points = points;
+      guess.acceptedAt = Date.now();
+      if (!room.solvedBy) room.solvedBy = guess.playerId;
+      player.score = (Number(player.score) || 0) + points;
+      return { ok: true, rank, points };
+    }
+
     function recordAnswer(room, answer) {
       const word = currentWord(room);
       const player = room.players[answer.playerId];
@@ -2131,25 +2205,28 @@
       room.roundWinners = winners;
       const alreadyCorrect = correctRank(room, answer.playerId) >= 0;
       const autoScore = room.answerMode === "auto";
-      const rank = matched && autoScore && !alreadyCorrect ? winners.length + 1 : null;
-      const points = rank ? scoreForRank(rank - 1) : 0;
-      room.guesses.unshift({
+      const guess = {
         id: answer.id,
         playerId: answer.playerId,
         name: player?.name || answer.name,
         text: answer.text,
-        correct: matched,
-        points,
-        rank,
+        matched,
+        correct: matched && autoScore,
+        points: 0,
+        rank: null,
         at: answer.at
-      });
+      };
+      room.guesses.unshift(guess);
       room.guesses = room.guesses.slice(0, 60);
       if (matched && autoScore && !alreadyCorrect) {
-        winners.push(answer.playerId);
-        if (!room.solvedBy) room.solvedBy = answer.playerId;
-        if (player) player.score += points;
+        acceptGuessForScore(room, guess);
+      } else if (matched && autoScore && alreadyCorrect) {
+        const existingRank = correctRank(room, answer.playerId);
+        guess.correct = true;
+        guess.rank = existingRank >= 0 ? existingRank + 1 : null;
+        guess.points = 0;
       }
-      return { ok: true, matched, points, rank };
+      return { ok: true, matched, points: guess.points, rank: guess.rank };
     }
 
     async function submitAnswer(event) {
@@ -2479,6 +2556,18 @@
       return '<span class="private-answer">답안 제출됨</span>';
     }
 
+    function guessActionsHtml(guess, room, audience = state.role) {
+      if (audience === "student" || room?.status !== "game" || guess.correct) return "";
+      if (correctRank(room, guess.playerId) >= 0) return "";
+      const hint = guess.matched ? '<span class="seal-chip rank-chip">정답 후보</span>' : "";
+      return `
+        <div class="chat-actions">
+          ${hint}
+          <button class="small-btn good" data-guess-action="accept" data-guess-id="${escapeHtml(guess.id)}">정답 인정</button>
+        </div>
+      `;
+    }
+
     function chatListHtml(room, audience = state.role) {
       if (!room?.guesses?.length) return '<div class="empty">아직 정답 입력이 없습니다.</div>';
       return room.guesses.map((guess) => `
@@ -2488,6 +2577,7 @@
             <span class="chat-time">${new Date(guess.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
           <div class="chat-text">${guessTextHtml(guess, room, audience)}</div>
+          ${guessActionsHtml(guess, room, audience)}
         </div>
       `).join("");
     }
@@ -2513,6 +2603,11 @@
       document.querySelector("#adminRoundInfo").textContent = statusLabel;
       document.querySelector("#adminStudentCount").textContent = `${active.size}/${players.length}`;
       document.querySelector("#adminCorrectCount").textContent = `${(room.roundWinners || []).length}명`;
+      const adminNextButton = document.querySelector("#adminNextRoundBtn");
+      const adminRevealButton = document.querySelector("#adminRevealBtn");
+      adminNextButton.textContent = room.status === "lobby" ? "게임 시작" : room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
+      adminNextButton.disabled = room.status === "finished";
+      adminRevealButton.disabled = room.status !== "game" || room.reveal;
       document.querySelector("#adminPlayers").innerHTML = players.length ? players.map((player) => {
         const roundBlocked = isRoundBlocked(player, room);
         const rankIndex = correctRank(room, player.id);
@@ -2638,6 +2733,34 @@
       if (message) showToast(message);
     }
 
+    async function handleGuessAction(event) {
+      const button = event.target.closest("[data-guess-action]");
+      if (!button) return;
+      const guessId = button.dataset.guessId;
+      const action = button.dataset.guessAction;
+      if (action !== "accept" || !guessId) return;
+      let message = "";
+      await refreshLatestRoom();
+      await transactRoom((room) => {
+        if (room.status !== "game") {
+          message = "게임 중에만 정답 인정이 가능합니다.";
+          return false;
+        }
+        const guess = (room.guesses || []).find((item) => item.id === guessId);
+        if (!guess) {
+          message = "정답 기록을 찾을 수 없습니다.";
+          return false;
+        }
+        const outcome = acceptGuessForScore(room, guess);
+        if (!outcome.ok) {
+          message = outcome.message;
+          return false;
+        }
+        message = `${guess.name} 정답 인정 · ${outcome.rank}등 +${outcome.points}점`;
+      }, "accept answer");
+      if (message) showToast(message);
+    }
+
     async function hydrateFromUrl() {
       const params = new URLSearchParams(location.search);
       const code = params.get("room");
@@ -2696,11 +2819,15 @@
     document.querySelector("#revealAnswerBtn").addEventListener("click", revealAnswer);
     document.querySelector("#changeDrawerBtn").addEventListener("click", changeDrawerForRoom);
     document.querySelector("#clearCanvasBtn").addEventListener("click", clearCanvasForRoom);
+    document.querySelector("#adminNextRoundBtn").addEventListener("click", nextRound);
+    document.querySelector("#adminRevealBtn").addEventListener("click", revealAnswer);
     document.querySelector("#backLobbyBtn").addEventListener("click", backToLobby);
     document.querySelector("#copyLinkBtn").addEventListener("click", copyJoinLink);
     document.querySelector("#openAdminBtn").addEventListener("click", openAdminWindow);
     document.querySelector("#openAdminGameBtn").addEventListener("click", openAdminWindow);
     document.querySelector("#adminPlayers").addEventListener("click", handleAdminAction);
+    document.querySelector("#chatList").addEventListener("click", handleGuessAction);
+    document.querySelector("#adminChatList").addEventListener("click", handleGuessAction);
     document.querySelector("#answerForm").addEventListener("submit", submitAnswer);
     document.querySelector("#sizeRange").addEventListener("input", (event) => {
       state.size = Number(event.target.value);
