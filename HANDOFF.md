@@ -307,3 +307,13 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Student game layout keeps the top status board visible, with drawing in the middle and the answer input as a dedicated bottom section.
 - Student landscape mode hides the redundant drawing title for guessers so the canvas and answer field both fit comfortably.
 - Verified with an automated Chrome E2E test: student portrait/landscape layouts kept status, canvas, and answer input inside the viewport; teacher status bar spanned the board; the answer input stayed non-floating and focused after submit.
+
+## 2026-07-09 UI Test Mode
+
+- Added a `화면 테스트` button on the home screen.
+- Test mode creates a local-only sample room with code `TEST`, sample students, a sample drawing, answer log entries, and rank-based scores.
+- The fixed test switcher can preview `교사`, `그리는 학생`, `맞히는 학생`, and `운영창` views without touching Firebase.
+- Test mode bypasses Firebase writes, Firebase room watches, and remote transactions; all test actions stay in local storage.
+- The answer input now explicitly submits on Enter so keyboard entry behaves like the send button.
+- Admin view now stays on the admin screen when a correct-answer countdown auto-advances to the next round.
+- Verified with automated in-app browser tests: teacher view showed the prompt and drawer, drawer view showed tools and hid the answer form, guesser view submitted `바나나` by Enter for 90 points, admin view stayed open after the 5-second auto-advance, reset restored the sample room, and exit returned to home.

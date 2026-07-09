@@ -1194,6 +1194,63 @@
       transform: translate(-50%, 0);
     }
 
+    body.is-test-mode .page {
+      padding-top: 76px;
+    }
+
+    .test-switcher {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      max-width: calc(100vw - 24px);
+      padding: 8px;
+      border: 3px solid #caa96a;
+      border-radius: 18px;
+      background: rgba(255, 250, 240, .97);
+      box-shadow: 0 12px 28px rgba(48, 42, 28, .20);
+    }
+
+    .test-switcher[hidden] {
+      display: none !important;
+    }
+
+    .test-switcher span {
+      padding: 0 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .test-switcher button {
+      min-height: 36px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--ink);
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .10);
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .test-switcher button.active {
+      background: var(--teal);
+      color: #fff;
+    }
+
+    .test-switcher button[data-test-action="reset"] {
+      background: var(--yellow);
+      color: #4f3710;
+    }
+
+    .test-switcher button[data-test-action="exit"] {
+      color: var(--red);
+    }
+
     .confetti {
       position: fixed;
       top: -24px;
@@ -1472,6 +1529,25 @@
         min-height: 58px;
       }
     }
+
+    @media (max-width: 680px) {
+      body.is-test-mode .page {
+        padding-top: 116px;
+      }
+
+      .test-switcher {
+        top: 8px;
+        right: 8px;
+        left: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .test-switcher span {
+        width: 100%;
+        text-align: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1487,6 +1563,7 @@
         <div class="stack">
           <button class="big-btn primary" id="goTeacherBtn">교사로 방 만들기</button>
           <button class="big-btn secondary" id="goStudentBtn">학생으로 참여하기</button>
+          <button class="big-btn warn" id="startUiTestBtn">화면 테스트</button>
         </div>
       </div>
     </section>
@@ -1740,6 +1817,16 @@
     </section>
   </main>
 
+  <div class="test-switcher" id="testSwitcher" hidden>
+    <span id="testModeLabel">UI 테스트</span>
+    <button type="button" data-test-view="teacher">교사</button>
+    <button type="button" data-test-view="drawer">그리는 학생</button>
+    <button type="button" data-test-view="guesser">맞히는 학생</button>
+    <button type="button" data-test-view="admin">운영창</button>
+    <button type="button" data-test-action="reset">초기화</button>
+    <button type="button" data-test-action="exit">종료</button>
+  </div>
+
   <div class="toast" id="toast">알림</div>
 
   <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
@@ -1799,6 +1886,13 @@
     ];
     const blockedAnswerPatterns = [/시+발+/, /씨+발+/, /병+신+/, /개+새+끼+/, /ㅅ+ㅂ+/, /ㅂ+ㅅ+/, /ㅈ+ㄹ+/];
     const fixedGrade = 6;
+    const uiTestRoomCode = "TEST";
+    const uiTestViews = {
+      teacher: "교사 화면",
+      drawer: "그리는 학생",
+      guesser: "맞히는 학생",
+      admin: "운영창"
+    };
 
     const state = {
       role: null,
@@ -1807,6 +1901,8 @@
       playerId: "",
       name: "",
       room: null,
+      testMode: false,
+      testView: "",
       tool: "pen",
       color: palette[0],
       size: 9,
@@ -1848,8 +1944,10 @@
     }
 
     function updateConnectionStatus() {
-      const connected = hasFirebase() && firebaseState.connected;
-      const label = !hasFirebase()
+      const connected = !state.testMode && hasFirebase() && firebaseState.connected;
+      const label = state.testMode
+        ? "UI 테스트"
+        : !hasFirebase()
         ? "로컬 모드"
         : connected
           ? "온라인 동기화"
@@ -1983,6 +2081,10 @@
     }
 
     function startFirebaseWatch(code = state.roomCode) {
+      if (state.testMode) {
+        stopFirebaseWatch();
+        return;
+      }
       const normalized = String(code || "").toUpperCase();
       if (!normalized || !hasFirebase()) return;
       if (firebaseState.watchCode === normalized) return;
@@ -2195,7 +2297,7 @@
     function saveRoom(room, broadcast = true) {
       room = saveLocalRoom(room, broadcast);
       if (!room?.code) return null;
-      saveRemoteRoom(room);
+      if (!state.testMode) saveRemoteRoom(room);
       return room;
     }
 
@@ -2229,7 +2331,7 @@
     }
 
     async function transactRoom(mutator, action = "update") {
-      if (!hasFirebase()) return mutateRoom(mutator);
+      if (state.testMode || !hasFirebase()) return mutateRoom(mutator);
       const ref = firebaseRoomRef();
       if (!ref) return mutateRoom(mutator);
       try {
@@ -2279,6 +2381,7 @@
     }
 
     function activePlayers(room = state.room) {
+      if (state.testMode) return roomPlayers(room);
       const now = Date.now();
       return roomPlayers(room).filter((player) => now - player.lastSeen < 12000);
     }
@@ -2294,6 +2397,7 @@
     }
 
     function activeRosterPlayers(room = state.room) {
+      if (state.testMode) return rosterPlayers(room);
       const now = Date.now();
       return rosterPlayers(room).filter((player) => now - player.lastSeen < 12000);
     }
@@ -2448,6 +2552,222 @@
       playTone(type);
     }
 
+    function uiTestPlayer(classNo, number, score, now, options = {}) {
+      const id = `g${fixedGrade}-c${classNo}-n${number}`;
+      return {
+        id,
+        grade: fixedGrade,
+        classNo,
+        number,
+        name: `${fixedGrade}학년 ${classNo}반 ${number}번`,
+        score: Number(score) || 0,
+        joinedAt: now - (options.joinOffset || 60000),
+        lastSeen: now - (options.seenOffset || 0),
+        chatBlocked: Boolean(options.chatBlocked),
+        blockedRound: options.blockedRound || null
+      };
+    }
+
+    function uiTestStroke(id, tool, color, size, points) {
+      return {
+        id: `test-stroke-${id}`,
+        tool,
+        color,
+        size,
+        points: points.map(([x, y]) => ({ x, y }))
+      };
+    }
+
+    function uiTestStrokes() {
+      return [
+        uiTestStroke("banana-fill", "marker", "#e8b33f", 26, [
+          [310, 520], [390, 595], [505, 642], [650, 650], [790, 610], [900, 530], [950, 455]
+        ]),
+        uiTestStroke("banana-outline-top", "pen", "#8c5628", 12, [
+          [300, 505], [400, 555], [525, 586], [675, 590], [815, 548], [930, 446]
+        ]),
+        uiTestStroke("banana-outline-bottom", "pen", "#8c5628", 12, [
+          [322, 542], [430, 650], [590, 710], [760, 686], [890, 585], [970, 470]
+        ]),
+        uiTestStroke("banana-tip-left", "pen", "#4f3710", 16, [
+          [285, 500], [315, 528], [285, 554]
+        ]),
+        uiTestStroke("banana-tip-right", "pen", "#4f3710", 14, [
+          [938, 445], [985, 420], [973, 474]
+        ]),
+        uiTestStroke("banana-shine", "marker", "#ffffff", 8, [
+          [440, 570], [560, 605], [720, 590], [840, 520]
+        ])
+      ];
+    }
+
+    function createUiTestRoom() {
+      const now = Date.now();
+      const drawer = uiTestPlayer(3, 12, 0, now, { joinOffset: 90000 });
+      const guesser = uiTestPlayer(3, 13, 0, now, { joinOffset: 82000 });
+      const correct = uiTestPlayer(3, 14, 100, now, { joinOffset: 76000 });
+      return {
+        code: uiTestRoomCode,
+        teacherId: `test-teacher-${state.clientId}`,
+        teacherName: "테스트 선생님",
+        duration: 180,
+        answerMode: "auto",
+        roundLimit: 3,
+        soundOn: false,
+        words: ["바나나", "학교", "우산", "고양이", "우주선", "축구공"],
+        used: ["바나나"],
+        status: "game",
+        round: 1,
+        currentWordIndex: 0,
+        drawerId: drawer.id,
+        roundStartedAt: now - 24000,
+        autoAdvanceAt: null,
+        autoAdvanceReason: "",
+        solvedBy: null,
+        reveal: false,
+        clearId: 1,
+        strokes: uiTestStrokes(),
+        guesses: [
+          {
+            id: "test-guess-correct",
+            playerId: correct.id,
+            name: correct.name,
+            text: "바나나",
+            matched: true,
+            correct: true,
+            points: 100,
+            rank: 1,
+            acceptedAt: now - 12000,
+            at: now - 12000
+          },
+          {
+            id: "test-guess-wrong",
+            playerId: guesser.id,
+            name: guesser.name,
+            text: "사과",
+            matched: false,
+            correct: false,
+            points: 0,
+            rank: null,
+            at: now - 17000
+          }
+        ],
+        roundWinners: [correct.id],
+        players: {
+          [drawer.id]: drawer,
+          [guesser.id]: guesser,
+          [correct.id]: correct
+        },
+        createdAt: now - 90000,
+        updatedAt: now
+      };
+    }
+
+    function seedUiTestRoom() {
+      const room = normalizeRoom(createUiTestRoom());
+      room.updatedAt = Date.now();
+      localStorage.setItem(roomKey(uiTestRoomCode), JSON.stringify(room));
+      state.room = room;
+      state.roomCode = uiTestRoomCode;
+      state.lastStrokeCount = -1;
+      state.lastClearId = null;
+      resetCanvas();
+      return room;
+    }
+
+    function currentUiTestRoom() {
+      return readRoom(uiTestRoomCode) || seedUiTestRoom();
+    }
+
+    function updateUiTestSwitcher() {
+      const switcher = document.querySelector("#testSwitcher");
+      if (!switcher) return;
+      switcher.hidden = !state.testMode;
+      document.body.classList.toggle("is-test-mode", state.testMode);
+      document.querySelector("#testModeLabel").textContent = state.testMode
+        ? `UI 테스트 · ${uiTestViews[state.testView] || "교사 화면"}`
+        : "UI 테스트";
+      switcher.querySelectorAll("[data-test-view]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.testView === state.testView);
+      });
+    }
+
+    function switchUiTestView(view = "teacher", silent = false) {
+      const target = uiTestViews[view] ? view : "teacher";
+      state.testMode = true;
+      state.testView = target;
+      state.roomCode = uiTestRoomCode;
+      stopFirebaseWatch();
+      const room = currentUiTestRoom();
+      const drawerId = "g6-c3-n12";
+      const guesserId = "g6-c3-n13";
+      if (target === "teacher") {
+        state.role = "teacher";
+        state.playerId = "";
+        state.name = room.teacherName;
+        showScreen("game");
+      } else if (target === "admin") {
+        state.role = "admin";
+        state.playerId = "";
+        state.name = "테스트 운영창";
+        showScreen("admin");
+      } else {
+        const playerId = target === "drawer" ? drawerId : guesserId;
+        const player = room.players[playerId];
+        state.role = "student";
+        state.playerId = playerId;
+        state.name = player?.name || "테스트 학생";
+        showScreen("game");
+      }
+      updateUiTestSwitcher();
+      startRoomLoops();
+      render();
+      if (!silent) showToast(`${uiTestViews[target]}으로 전환했습니다.`);
+    }
+
+    function enterUiTestMode(view = "teacher") {
+      state.testMode = true;
+      stopRoomLoops();
+      stopFirebaseWatch();
+      seedUiTestRoom();
+      switchUiTestView(view, true);
+      showToast("화면 테스트 모드입니다. 위 버튼으로 교사/학생/운영창을 바꿔보세요.");
+    }
+
+    function resetUiTestMode() {
+      seedUiTestRoom();
+      switchUiTestView(state.testView || "teacher", true);
+      showToast("테스트 방을 초기화했습니다.");
+    }
+
+    function exitUiTestMode(silent = false) {
+      if (!state.testMode) return;
+      stopRoomLoops();
+      stopFirebaseWatch();
+      state.testMode = false;
+      state.testView = "";
+      state.role = null;
+      state.roomCode = null;
+      state.playerId = "";
+      state.name = "";
+      state.room = null;
+      state.lastToastKey = "";
+      document.body.dataset.role = "";
+      document.body.dataset.status = "";
+      document.body.classList.remove("is-current-drawer");
+      localStorage.removeItem(roomKey(uiTestRoomCode));
+      updateUiTestSwitcher();
+      resetCanvas();
+      showScreen("home");
+      updateConnectionStatus();
+      if (!silent) showToast("화면 테스트 모드를 종료했습니다.");
+    }
+
+    function navigateNormal(screenName) {
+      if (state.testMode) exitUiTestMode(true);
+      showScreen(screenName);
+    }
+
     async function createRoom() {
       const button = document.querySelector("#createRoomBtn");
       const originalLabel = button.textContent;
@@ -2555,6 +2875,15 @@
       }
     }
 
+    function stopRoomLoops() {
+      clearInterval(state.heartbeatTick);
+      clearInterval(state.roomTick);
+      clearInterval(state.timerTick);
+      state.heartbeatTick = null;
+      state.roomTick = null;
+      state.timerTick = null;
+    }
+
     function heartbeat() {
       if (state.role !== "student" || !state.roomCode) return;
       const room = readRoom();
@@ -2564,6 +2893,10 @@
       const now = Date.now();
       player.lastSeen = now;
       player.name = state.name;
+      if (state.testMode) {
+        storeRoomSnapshot(room);
+        return;
+      }
       if (hasFirebase()) {
         storeRoomSnapshot(room, false);
         const ref = firebaseRoomRef(room.code);
@@ -2577,10 +2910,12 @@
     }
 
     function startRoomLoops() {
-      clearInterval(state.heartbeatTick);
-      clearInterval(state.roomTick);
-      clearInterval(state.timerTick);
-      startFirebaseWatch();
+      stopRoomLoops();
+      if (state.testMode) {
+        stopFirebaseWatch();
+      } else {
+        startFirebaseWatch();
+      }
       state.roomTick = setInterval(() => {
         const room = readRoom();
         if (room) {
@@ -2606,7 +2941,7 @@
     }
 
     async function refreshLatestRoom() {
-      if (!hasFirebase() || !state.roomCode) return readRoom();
+      if (state.testMode || !hasFirebase() || !state.roomCode) return readRoom();
       const latest = await loadLatestRoom(state.roomCode);
       if (latest?.code) {
         return storeRoomSnapshot(latest);
@@ -2660,7 +2995,7 @@
           return;
         }
         if (!updated) return;
-        showScreen("game");
+        if (state.role !== "admin") showScreen("game");
         if (updated?.status === "finished") {
           showToast("모든 라운드가 끝났습니다.");
           playRoomSound(`finish-${updated.round}`, "finish", updated);
@@ -2850,7 +3185,7 @@
         text,
         at: Date.now()
       };
-      if (hasFirebase()) {
+      if (!state.testMode && hasFirebase()) {
         let feedback = "";
         try {
           const result = await firebaseRoomRef().transaction((current) => {
@@ -2985,6 +3320,7 @@
     }
 
     function render() {
+      updateUiTestSwitcher();
       updateConnectionStatus();
       const room = state.room;
       if (!room) return;
@@ -3320,6 +3656,10 @@
     }
 
     function openAdminWindow() {
+      if (state.testMode) {
+        switchUiTestView("admin");
+        return;
+      }
       const url = adminUrl(state.roomCode);
       const popup = window.open(url, "classCatchmindAdmin", "width=1180,height=760");
       if (popup) {
@@ -3451,9 +3791,10 @@
       });
     }
 
-    document.querySelector("#goTeacherBtn").addEventListener("click", () => showScreen("teacher"));
-    document.querySelector("#goStudentBtn").addEventListener("click", () => showScreen("student"));
-    document.querySelectorAll("[data-nav='home']").forEach((button) => button.addEventListener("click", () => showScreen("home")));
+    document.querySelector("#goTeacherBtn").addEventListener("click", () => navigateNormal("teacher"));
+    document.querySelector("#goStudentBtn").addEventListener("click", () => navigateNormal("student"));
+    document.querySelector("#startUiTestBtn").addEventListener("click", () => enterUiTestMode("teacher"));
+    document.querySelectorAll("[data-nav='home']").forEach((button) => button.addEventListener("click", () => navigateNormal("home")));
     document.querySelector("#createRoomBtn").addEventListener("click", createRoom);
     document.querySelector("#joinRoomBtn").addEventListener("click", joinRoom);
     document.querySelector("#startGameBtn").addEventListener("click", nextRound);
@@ -3471,6 +3812,18 @@
     document.querySelector("#chatList").addEventListener("click", handleGuessAction);
     document.querySelector("#adminChatList").addEventListener("click", handleGuessAction);
     document.querySelector("#answerForm").addEventListener("submit", submitAnswer);
+    document.querySelector("#answerInput").addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return;
+      event.preventDefault();
+      document.querySelector("#answerForm").requestSubmit();
+    });
+    document.querySelector("#testSwitcher").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.testView) switchUiTestView(button.dataset.testView);
+      if (button.dataset.testAction === "reset") resetUiTestMode();
+      if (button.dataset.testAction === "exit") exitUiTestMode();
+    });
     document.querySelector("#sizeRange").addEventListener("input", (event) => {
       state.size = Number(event.target.value);
       document.querySelector("#sizeValue").textContent = String(state.size);
