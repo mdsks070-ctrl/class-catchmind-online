@@ -314,13 +314,32 @@
       background: #fffdf7;
     }
 
-    .qr-card img {
+    .qr-image-button {
       display: block;
+      width: 126px;
+      height: 126px;
+      padding: 0;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(43, 34, 18, .12);
+    }
+
+    .qr-image-button:focus-visible {
+      outline: 4px solid rgba(47, 143, 133, .26);
+      outline-offset: 3px;
+    }
+
+    .qr-card img,
+    .qr-modal-card img {
+      display: block;
+      background: #fff;
+    }
+
+    .qr-card img {
       width: 126px;
       height: 126px;
       border: 2px solid #ead9b9;
       border-radius: 10px;
-      background: #fff;
     }
 
     .qr-card strong,
@@ -338,6 +357,97 @@
       color: var(--muted);
       font-size: 13px;
       font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .qr-card .qr-tap-hint {
+      color: #12613f;
+      font-weight: 950;
+    }
+
+    .qr-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(24, 20, 13, .56);
+    }
+
+    .qr-modal[hidden] {
+      display: none !important;
+    }
+
+    .qr-modal-card {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      width: min(520px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      padding: 20px;
+      border: 4px solid #caa96a;
+      border-radius: 18px;
+      background: #fffaf0;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, .28);
+      text-align: center;
+    }
+
+    .qr-modal-title {
+      margin: 0;
+      padding-right: 34px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .qr-modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: grid;
+      width: 36px;
+      min-height: 36px;
+      place-items: center;
+      border-radius: 50%;
+      background: #263817;
+      color: #fff6df;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18);
+      font-size: 22px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .qr-modal-card img {
+      width: min(380px, 78vw);
+      height: min(380px, 78vw);
+      border: 3px solid #ead9b9;
+      border-radius: 16px;
+    }
+
+    .qr-modal-code {
+      display: inline-grid;
+      min-height: 58px;
+      align-items: center;
+      padding: 6px 22px;
+      border: 3px dashed #d4ad5d;
+      border-radius: 16px;
+      background: #fff2ca;
+      color: var(--chalk-dark);
+      font-size: clamp(34px, 9vw, 54px);
+      font-weight: 950;
+      letter-spacing: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .qr-modal-link {
+      width: 100%;
+      overflow-wrap: anywhere;
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 850;
       line-height: 1.4;
     }
 
@@ -1827,10 +1937,13 @@
           <div class="room-code" id="roomCodeText">----</div>
           <span class="join-link" id="joinLinkText">참여 링크 준비 중</span>
           <div class="qr-card">
-            <img id="joinQrImage" alt="참여 QR 코드">
+            <button class="qr-image-button" id="openQrBtn" type="button" aria-label="참여 QR 크게 보기">
+              <img id="joinQrImage" alt="참여 QR 코드">
+            </button>
             <div>
               <strong>QR로 바로 입장</strong>
               <span>학생은 반과 번호만 입력하면 됩니다.</span>
+              <span class="qr-tap-hint">QR을 누르면 크게 볼 수 있습니다.</span>
             </div>
           </div>
           <span class="connection-pill" data-connection-status>연결 확인 중</span>
@@ -1970,6 +2083,16 @@
       </aside>
     </section>
   </main>
+
+  <div class="qr-modal" id="qrModal" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle" hidden>
+    <div class="qr-modal-card">
+      <button class="qr-modal-close" id="closeQrModalBtn" type="button" aria-label="QR 확대 닫기">×</button>
+      <h2 class="qr-modal-title" id="qrModalTitle">QR로 바로 입장</h2>
+      <img id="qrModalImage" alt="확대된 참여 QR 코드">
+      <div class="qr-modal-code" id="qrModalCode">----</div>
+      <p class="qr-modal-link" id="qrModalLink">참여 링크 준비 중</p>
+    </div>
+  </div>
 
   <div class="test-switcher" id="testSwitcher" hidden>
     <span id="testModeLabel">UI 테스트</span>
@@ -2631,6 +2754,13 @@
       qrUrl.searchParams.set("data", url);
       image.src = qrUrl.toString();
       image.alt = `${String(code).toUpperCase()} 방 참여 QR 코드`;
+      const modalImage = document.querySelector("#qrModalImage");
+      if (modalImage) {
+        modalImage.src = image.src;
+        modalImage.alt = `${String(code).toUpperCase()} 방 참여 확대 QR 코드`;
+      }
+      document.querySelector("#qrModalCode").textContent = String(code).toUpperCase();
+      document.querySelector("#qrModalLink").textContent = url;
     }
 
     function applyRoomLinkMode(code) {
@@ -3827,6 +3957,22 @@
       );
     }
 
+    function openQrModal() {
+      if (!state.roomCode) {
+        showToast("먼저 방을 만들어 주세요.");
+        return;
+      }
+      renderJoinQr(state.roomCode);
+      const modal = document.querySelector("#qrModal");
+      modal.hidden = false;
+      document.querySelector("#closeQrModalBtn").focus({ preventScroll: true });
+    }
+
+    function closeQrModal() {
+      document.querySelector("#qrModal").hidden = true;
+      document.querySelector("#openQrBtn")?.focus({ preventScroll: true });
+    }
+
     function openAdminWindow() {
       if (state.testMode) {
         switchUiTestView("admin");
@@ -3978,6 +4124,11 @@
     document.querySelector("#adminRevealBtn").addEventListener("click", revealAnswer);
     document.querySelector("#backLobbyBtn").addEventListener("click", backToLobby);
     document.querySelector("#copyLinkBtn").addEventListener("click", copyJoinLink);
+    document.querySelector("#openQrBtn").addEventListener("click", openQrModal);
+    document.querySelector("#closeQrModalBtn").addEventListener("click", closeQrModal);
+    document.querySelector("#qrModal").addEventListener("click", (event) => {
+      if (event.target.id === "qrModal") closeQrModal();
+    });
     document.querySelector("#openAdminBtn").addEventListener("click", openAdminWindow);
     document.querySelector("#openAdminGameBtn").addEventListener("click", openAdminWindow);
     document.querySelector("#adminPlayers").addEventListener("click", handleAdminAction);
@@ -4008,6 +4159,9 @@
     canvas.addEventListener("mousedown", startDraw);
     canvas.addEventListener("mousemove", moveDraw);
     window.addEventListener("mouseup", endDraw);
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !document.querySelector("#qrModal").hidden) closeQrModal();
+    });
     canvas.addEventListener("pointerleave", (event) => {
       if (state.drawing && event.buttons === 0) endDraw(event);
     });
