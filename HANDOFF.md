@@ -224,3 +224,13 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - GitHub Pages source: `gh-pages` branch, `/ (root)`.
 - Repository visibility was changed to public so GitHub Pages can serve the app.
 - Current deployed branch contains `index.html` and `class_catchmind_online.html`, both pointing to the classroom app.
+
+## 2026-07-09 Student Drawer Update
+
+- `class_catchmind_online.html` now assigns one student as `drawerId` every round.
+- The teacher/admin screens still show the secret word for supervision, but only the assigned student sees the word as a student.
+- Only the assigned student can draw on the canvas. Other students see the drawing and can submit answers.
+- The drawer cannot submit an answer for their own round; this is blocked in the answer permission logic, not only hidden in the UI.
+- Teacher game controls now include `그릴 학생 바꾸기`; the admin panel also has `그리기 지정`.
+- Changing the drawer clears the current canvas so two students' drawings do not mix.
+- Verified with an automated multi-tab E2E test: teacher + students 12/13/14, first drawer 12, correct answer score 100 for 13, drawer switched to 13, admin drawer badge visible.
