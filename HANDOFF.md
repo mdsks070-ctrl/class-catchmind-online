@@ -299,3 +299,11 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The canvas height is constrained so the answer field always stays inside the viewport in portrait and landscape.
 - The answer input is larger and visually dominant, with the send button aligned on the same row.
 - Verified with an automated Chrome E2E test: portrait and landscape layouts kept the answer section below the canvas, visible inside the viewport, and focused after submit.
+
+## 2026-07-09 Olive Game Board Skin
+
+- The game screen now uses a reference-style olive status board, warm cream panels, brown canvas frame, and muted classroom-game palette.
+- Teacher game layout now uses a full-width top status board above the drawing and answer panels.
+- Student game layout keeps the top status board visible, with drawing in the middle and the answer input as a dedicated bottom section.
+- Student landscape mode hides the redundant drawing title for guessers so the canvas and answer field both fit comfortably.
+- Verified with an automated Chrome E2E test: student portrait/landscape layouts kept status, canvas, and answer input inside the viewport; teacher status bar spanned the board; the answer input stayed non-floating and focused after submit.

@@ -6,17 +6,17 @@
   <title>그림으로 맞혀요 온라인</title>
   <style>
     :root {
-      --bg: #eaf3dd;
-      --cream: #fff8e7;
-      --paper: #ffffff;
-      --chalk: #245b2b;
-      --chalk-dark: #163c1d;
-      --wood: #9a5f2f;
+      --bg: #e9dfca;
+      --cream: #fff4dc;
+      --paper: #fffaf0;
+      --chalk: #243513;
+      --chalk-dark: #17230c;
+      --wood: #8c5628;
       --ink: #222327;
-      --muted: #68727f;
-      --line: #ded6c4;
-      --orange: #ff8442;
-      --teal: #58beb8;
+      --muted: #746b5b;
+      --line: #d2b98e;
+      --orange: #d47535;
+      --teal: #2f8f85;
       --blue: #3776d6;
       --green: #1c9b72;
       --red: #de4d57;
@@ -36,9 +36,9 @@
       min-height: 100vh;
       color: var(--ink);
       background:
-        radial-gradient(circle at 10% 8%, rgba(117, 173, 79, .22), transparent 18%),
-        radial-gradient(circle at 88% 12%, rgba(255, 132, 66, .18), transparent 16%),
-        linear-gradient(180deg, #dff0d5 0%, #fff2c8 100%);
+        radial-gradient(circle at 1px 1px, rgba(73, 56, 32, .08) 1px, transparent 1.6px),
+        linear-gradient(180deg, #e8dfcd 0%, #efe2c9 100%);
+      background-size: 18px 18px, auto;
       overflow: hidden;
     }
 
@@ -513,7 +513,11 @@
     }
 
     .game-screen {
-      grid-template-columns: minmax(250px, 300px) minmax(440px, 1fr) minmax(260px, 320px);
+      grid-template-columns: minmax(440px, 1fr) minmax(280px, 340px);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "status status"
+        "canvas chat";
       gap: 12px;
       min-height: calc(100vh - 36px);
     }
@@ -529,10 +533,89 @@
       overflow: hidden;
     }
 
+    .game-panel {
+      grid-area: status;
+      border-color: #5f4728;
+      background: linear-gradient(180deg, #253816, #1c2b10);
+      color: #fff6df;
+      box-shadow: 0 12px 24px rgba(34, 25, 12, .22);
+    }
+
+    .draw-panel {
+      grid-area: canvas;
+      border-color: #8b572a;
+      background: #d7c2a0;
+      box-shadow: 0 12px 24px rgba(34, 25, 12, .18);
+    }
+
+    .chat-panel {
+      grid-area: chat;
+      border-color: #8b6a3e;
+      background: rgba(246, 235, 214, .94);
+      box-shadow: 0 12px 24px rgba(34, 25, 12, .14);
+    }
+
     .game-panel,
     .chat-panel {
       display: grid;
       grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .game-panel .panel-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px 4px;
+      border-bottom: 0;
+      background: transparent;
+    }
+
+    .game-panel .panel-head h2 {
+      display: none;
+    }
+
+    .game-panel .panel-head p {
+      margin: 0;
+      color: #d8cda8;
+      font-weight: 900;
+    }
+
+    .game-panel .connection-pill {
+      border-color: rgba(255, 246, 223, .20);
+      background: rgba(255, 246, 223, .10);
+      color: #f6ebcd;
+    }
+
+    .game-panel .panel-body {
+      display: grid;
+      grid-template-columns: minmax(160px, .85fr) minmax(180px, 1fr) minmax(210px, 1.1fr);
+      gap: 8px;
+      padding: 6px 12px 12px;
+      overflow: visible;
+    }
+
+    .game-panel #scoreList {
+      display: none;
+    }
+
+    .game-panel .panel-foot {
+      padding: 0 12px 12px;
+      border-top: 0;
+      background: transparent;
+    }
+
+    .game-panel #teacherControls {
+      gap: 8px;
+    }
+
+    .game-panel #teacherControls .mini-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .game-panel #studentNotice {
+      display: none !important;
     }
 
     .panel-head {
@@ -560,26 +643,46 @@
       padding: 14px;
     }
 
+    .chat-panel .panel-head {
+      border-bottom-color: #5f4728;
+      background: #203014;
+      color: #fff6df;
+    }
+
+    .chat-panel .panel-head p {
+      color: #cbbd9f;
+    }
+
+    .chat-panel .panel-body {
+      background:
+        repeating-linear-gradient(0deg, rgba(99, 73, 38, .05), rgba(99, 73, 38, .05) 1px, transparent 1px, transparent 34px),
+        #efe0c6;
+    }
+
     .panel-foot {
       padding: 12px 14px;
       border-top: 2px solid #ead9b9;
       background: #fffaf0;
     }
 
+    .chat-panel .panel-foot {
+      border-top-color: #b9905e;
+      background: #e9d4b3;
+    }
+
     .round-card {
       display: grid;
-      gap: 8px;
-      margin-bottom: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      background:
-        linear-gradient(135deg, rgba(36, 91, 43, .94), rgba(22, 60, 29, .96)),
-        var(--chalk);
+      gap: 5px;
+      margin-bottom: 0;
+      padding: 9px 11px;
+      border: 1px solid rgba(255, 246, 223, .14);
+      border-radius: 10px;
+      background: rgba(255, 246, 223, .08);
       color: #fff;
     }
 
     .round-label {
-      color: #d9f0ac;
+      color: #bfd89b;
       font-size: 12px;
       font-weight: 900;
     }
@@ -588,26 +691,27 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 30px;
+      font-size: 20px;
       font-weight: 950;
       letter-spacing: 0;
     }
 
     .timer {
       display: grid;
-      grid-template-columns: 72px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 8px;
       align-items: center;
-      margin-bottom: 12px;
-      padding: 10px;
-      border-radius: 14px;
-      background: #f7edcc;
+      margin-bottom: 0;
+      padding: 9px 10px;
+      border: 1px solid rgba(255, 246, 223, .14);
+      border-radius: 10px;
+      background: rgba(255, 246, 223, .08);
     }
 
     .timer-circle {
       display: grid;
-      width: 72px;
-      height: 72px;
+      width: 58px;
+      height: 58px;
       place-items: center;
       border-radius: 50%;
       background: conic-gradient(var(--green) var(--timer-deg, 360deg), #e6d7b5 0);
@@ -615,24 +719,26 @@
 
     .timer-inner {
       display: grid;
-      width: 54px;
-      height: 54px;
+      width: 44px;
+      height: 44px;
       place-items: center;
       border-radius: 50%;
-      background: #fffaf0;
-      font-size: 22px;
+      background: #fff1dc;
+      color: #c75e2d;
+      font-size: 17px;
       font-weight: 950;
       font-variant-numeric: tabular-nums;
     }
 
     .timer-text strong {
       display: block;
-      font-size: 14px;
+      color: #f4e7c8;
+      font-size: 13px;
     }
 
     .timer-text span {
       display: block;
-      color: var(--muted);
+      color: #cbbd9f;
       font-size: 12px;
       line-height: 1.3;
     }
@@ -648,8 +754,8 @@
       gap: 10px;
       align-items: center;
       padding: 12px 14px;
-      border-bottom: 2px solid #ead9b9;
-      background: #fffaf0;
+      border-bottom: 2px solid #b77b43;
+      background: #efe1c9;
     }
 
     .draw-heading {
@@ -666,7 +772,7 @@
     .draw-meta {
       margin-top: 3px;
       overflow: hidden;
-      color: var(--muted);
+      color: #786b58;
       font-size: 12px;
       font-weight: 850;
       text-overflow: ellipsis;
@@ -689,27 +795,27 @@
     .drawer-card {
       display: grid;
       gap: 4px;
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border: 2px solid #ead9b9;
-      border-radius: 8px;
-      background: #fffaf0;
+      margin-bottom: 0;
+      padding: 9px 11px;
+      border: 1px solid rgba(255, 246, 223, .14);
+      border-radius: 10px;
+      background: rgba(255, 246, 223, .08);
     }
 
     .drawer-card span {
-      color: var(--muted);
+      color: #cbbd9f;
       font-size: 12px;
       font-weight: 900;
     }
 
     .drawer-card strong {
-      color: var(--ink);
+      color: #fff6df;
       font-size: 17px;
       font-weight: 950;
     }
 
     .drawer-card small {
-      color: var(--muted);
+      color: #cbbd9f;
       font-size: 12px;
       font-weight: 800;
       line-height: 1.4;
@@ -718,21 +824,19 @@
     .canvas-wrap {
       position: relative;
       min-height: 0;
-      background:
-        linear-gradient(45deg, #f4f2ee 25%, transparent 25%),
-        linear-gradient(-45deg, #f4f2ee 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #f4f2ee 75%),
-        linear-gradient(-45deg, transparent 75%, #f4f2ee 75%);
-      background-color: #fff;
+      border: 4px solid #7c3f20;
+      border-radius: 16px;
+      background-color: #fff8e8;
       background-position: 0 0, 0 12px, 12px -12px, -12px 0;
       background-size: 24px 24px;
+      overflow: hidden;
     }
 
     canvas {
       display: block;
       width: 100%;
       height: 100%;
-      background: #fff;
+      background: #fffaf1;
       cursor: crosshair;
       touch-action: none;
     }
@@ -799,8 +903,8 @@
       gap: 10px;
       align-items: center;
       padding: 10px 12px;
-      border-top: 2px solid #ead9b9;
-      background: #fffaf0;
+      border-top: 2px solid #b77b43;
+      background: #d7c2a0;
     }
 
     .tools,
@@ -869,9 +973,9 @@
 
     .chat-item {
       padding: 9px 10px;
-      border: 2px solid #ead9b9;
+      border: 1px solid #d9c49c;
       border-radius: 12px;
-      background: #fffdf7;
+      background: #fbf0dc;
     }
 
     .chat-item.correct {
@@ -890,7 +994,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: var(--blue);
+      color: #8f5527;
       font-size: 12px;
       font-weight: 950;
     }
@@ -938,19 +1042,41 @@
 
     body[data-role="student"][data-status="game"] .game-screen {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "status"
+        "canvas"
+        "chat";
       gap: 10px;
       height: calc(100vh - 36px);
       min-height: calc(100vh - 36px);
     }
 
     body[data-role="student"][data-status="game"] .game-panel {
+      display: grid;
+      grid-template-rows: auto;
+      min-height: 0;
+    }
+
+    body[data-role="student"][data-status="game"] .game-panel .panel-head,
+    body[data-role="student"][data-status="game"] .game-panel .panel-foot {
       display: none;
+    }
+
+    body[data-role="student"][data-status="game"] .game-panel .panel-body {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(130px, .8fr);
+      padding: 10px;
+    }
+
+    body[data-role="student"][data-status="game"] .game-panel .round-card,
+    body[data-role="student"][data-status="game"] .game-panel .drawer-card,
+    body[data-role="student"][data-status="game"] .game-panel .timer {
+      min-height: 70px;
     }
 
     body[data-role="student"][data-status="game"] .draw-panel {
       grid-template-rows: auto minmax(0, 1fr) auto;
-      min-height: calc(100vh - 36px);
+      min-height: 0;
     }
 
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-panel {
@@ -982,14 +1108,21 @@
       display: none;
     }
 
+    body[data-role="student"][data-status="game"].is-current-drawer .game-screen {
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "status"
+        "canvas";
+    }
+
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
       position: static;
       width: 100%;
       padding: 12px;
       transform: none;
-      border: 2px solid #caa96a;
+      border: 2px solid #9f7341;
       border-radius: 18px;
-      background: rgba(255, 253, 247, .98);
+      background: rgba(244, 229, 203, .98);
       box-shadow: 0 14px 32px rgba(43, 34, 18, .22);
     }
 
@@ -1002,9 +1135,9 @@
     body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput {
       min-height: 70px;
       padding: 0 18px;
-      border-color: #caa96a;
+      border-color: #9f7341;
       border-radius: 16px;
-      background: #ffffff;
+      background: #fffaf1;
       font-size: 22px;
       font-weight: 900;
     }
@@ -1019,6 +1152,8 @@
       min-height: 70px;
       padding: 0 16px;
       border-radius: 16px;
+      background: #b66a31;
+      color: #fff6df;
       font-size: 18px;
     }
 
@@ -1166,9 +1301,58 @@
       }
 
       body[data-role="student"][data-status="game"] .game-screen {
-        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-areas:
+          "status"
+          "canvas"
+          "chat";
         height: calc(100vh - 16px);
         min-height: calc(100vh - 16px);
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .game-screen {
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+          "status"
+          "canvas";
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .panel-body {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(112px, .7fr);
+        gap: 6px;
+        padding: 6px;
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .round-card,
+      body[data-role="student"][data-status="game"] .game-panel .drawer-card,
+      body[data-role="student"][data-status="game"] .game-panel .timer {
+        min-height: 46px;
+        padding: 6px 8px;
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .drawer-card small,
+      body[data-role="student"][data-status="game"] .game-panel .timer-text span {
+        display: none;
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .secret-word,
+      body[data-role="student"][data-status="game"] .game-panel .drawer-card strong {
+        font-size: 15px;
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .timer {
+        grid-template-columns: 42px minmax(0, 1fr);
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .timer-circle {
+        width: 42px;
+        height: 42px;
+      }
+
+      body[data-role="student"][data-status="game"] .game-panel .timer-inner {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
       }
 
       .game-panel,
@@ -1224,7 +1408,7 @@
       }
 
       body[data-role="student"][data-status="game"] .draw-panel {
-        min-height: calc(100vh - 16px);
+        min-height: 0;
       }
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-panel {
@@ -1233,6 +1417,18 @@
 
       .draw-title {
         font-size: 14px;
+      }
+
+      body[data-role="student"][data-status="game"] .draw-title {
+        font-size: 13px;
+      }
+
+      body[data-role="student"][data-status="game"] .draw-meta {
+        font-size: 11px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-top {
+        display: none;
       }
 
       .canvas-lock {
