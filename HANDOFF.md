@@ -240,3 +240,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Small mobile landscape screens now pin the student answer form to the bottom of the viewport while the student is a guesser.
 - Drawer students still do not see the answer form; their drawing toolbar stays available.
 - Verified with an automated 844x390 landscape E2E test: answer input visible inside viewport, fixed bottom bar active, answer submission scored correctly.
+
+## 2026-07-09 Student Answer Log Privacy
+
+- Student answer logs no longer reveal other students' submitted answer text during an active round.
+- Students still see their own submitted text, and other students' entries appear as `답안 제출됨` or `정답 n등 +점수`.
+- Teacher game view and admin view still show the raw answer text for supervision.
+- Verified with an automated multi-tab E2E test: student 13 answered correctly, student 14 saw only `정답 1등 +100점`, teacher/admin saw the raw selected word.
