@@ -1178,6 +1178,8 @@
       lastClearId: null,
       lastToastKey: "",
       lastSoundKey: "",
+      roundAdvanceBusy: false,
+      autoRevealBusy: false,
       timerTick: null,
       heartbeatTick: null,
       roomTick: null
@@ -1326,6 +1328,24 @@
 
     function currentPlayerId() {
       return state.playerId || state.clientId;
+    }
+
+    function upsertStudent(room, student, now = Date.now()) {
+      const previous = room.players[student.id] || {};
+      room.players[student.id] = {
+        ...previous,
+        id: student.id,
+        name: student.name,
+        grade: student.grade,
+        classNo: student.classNo,
+        number: student.number,
+        score: Number(previous.score) || 0,
+        joinedAt: Number(previous.joinedAt) || now,
+        lastSeen: now,
+        chatBlocked: Boolean(previous.chatBlocked),
+        blockedRound: Number(previous.blockedRound) || null
+      };
+      return room.players[student.id];
     }
 
     function splitWords(value) {
@@ -1627,31 +1647,40 @@
         showToast("방 코드는 4자리로 입력해주세요.");
         return;
       }
-      const room = await loadLatestRoom(code);
+      let room = await loadLatestRoom(code);
       if (!room) {
         showToast("방 코드를 다시 확인해주세요.");
         return;
       }
       const now = Date.now();
-      room.players[student.id] = room.players[student.id] || {
-        id: student.id,
-        name: student.name,
-        grade: student.grade,
-        classNo: student.classNo,
-        number: student.number,
-        score: 0,
-        joinedAt: now,
-        lastSeen: now,
-        chatBlocked: false,
-        blockedRound: null
-      };
-      room.players[student.id].name = student.name;
-      room.players[student.id].grade = student.grade;
-      room.players[student.id].classNo = student.classNo;
-      room.players[student.id].number = student.number;
-      room.players[student.id].lastSeen = now;
-      room.players[student.id].chatBlocked = Boolean(room.players[student.id].chatBlocked);
-      room.players[student.id].blockedRound = Number(room.players[student.id].blockedRound) || null;
+      if (hasFirebase()) {
+        let missingRoom = false;
+        try {
+          const result = await firebaseRoomRef(code).transaction((current) => {
+            const draft = normalizeRoom(current || room);
+            if (!draft?.code) {
+              missingRoom = true;
+              return undefined;
+            }
+            upsertStudent(draft, student, now);
+            draft.updatedAt = Date.now();
+            return draft;
+          }, undefined, false);
+          if (result?.snapshot?.val()) {
+            room = storeRoomSnapshot(result.snapshot.val());
+          } else if (missingRoom) {
+            showToast("방 코드를 다시 확인해주세요.");
+            return;
+          }
+        } catch (error) {
+          reportFirebaseError("join", error);
+          upsertStudent(room, student, now);
+          saveRoom(room);
+        }
+      } else {
+        upsertStudent(room, student, now);
+        saveRoom(room);
+      }
       state.role = "student";
       state.roomCode = code;
       state.playerId = student.id;
@@ -1723,41 +1752,47 @@
     }
 
     async function nextRound() {
-      await refreshLatestRoom();
-      const updated = await transactRoom((room) => {
-        if (room.round >= room.roundLimit) {
-          finishRoom(room);
+      if (state.roundAdvanceBusy) return;
+      state.roundAdvanceBusy = true;
+      try {
+        await refreshLatestRoom();
+        const updated = await transactRoom((room) => {
+          if (room.round >= room.roundLimit) {
+            finishRoom(room);
+            return;
+          }
+          const available = room.words.map((word, index) => ({ word, index })).filter((item) => !room.used.includes(item.word));
+          const pool = available.length ? available : room.words.map((word, index) => ({ word, index }));
+          if (!available.length) room.used = [];
+          const picked = pool[Math.floor(Math.random() * pool.length)];
+          room.status = "game";
+          room.round += 1;
+          room.currentWordIndex = picked.index;
+          room.used.push(picked.word);
+          room.roundStartedAt = Date.now();
+          room.autoAdvanceAt = null;
+          room.solvedBy = null;
+          room.reveal = false;
+          room.clearId += 1;
+          room.strokes = [];
+          room.guesses = [];
+          room.roundWinners = [];
+          Object.values(room.players).forEach((player) => {
+            player.blockedRound = null;
+          });
+        });
+        showScreen("game");
+        if (updated?.status === "finished") {
+          showToast("모든 라운드가 끝났습니다.");
+          playRoomSound(`finish-${updated.round}`, "finish", updated);
           return;
         }
-        const available = room.words.map((word, index) => ({ word, index })).filter((item) => !room.used.includes(item.word));
-        const pool = available.length ? available : room.words.map((word, index) => ({ word, index }));
-        if (!available.length) room.used = [];
-        const picked = pool[Math.floor(Math.random() * pool.length)];
-        room.status = "game";
-        room.round += 1;
-        room.currentWordIndex = picked.index;
-        room.used.push(picked.word);
-        room.roundStartedAt = Date.now();
-        room.autoAdvanceAt = null;
-        room.solvedBy = null;
-        room.reveal = false;
-        room.clearId += 1;
-        room.strokes = [];
-        room.guesses = [];
-        room.roundWinners = [];
-        Object.values(room.players).forEach((player) => {
-          player.blockedRound = null;
-        });
-      });
-      showScreen("game");
-      if (updated?.status === "finished") {
-        showToast("모든 라운드가 끝났습니다.");
-        playRoomSound(`finish-${updated.round}`, "finish", updated);
-        return;
+        resetCanvas();
+        showToast("새 문제가 시작됐습니다.");
+        playRoomSound(`round-${updated?.round}`, "start", updated);
+      } finally {
+        state.roundAdvanceBusy = false;
       }
-      resetCanvas();
-      showToast("새 문제가 시작됐습니다.");
-      playRoomSound(`round-${updated?.round}`, "start", updated);
     }
 
     async function revealAnswer() {
@@ -2076,10 +2111,16 @@
       circle.style.setProperty("--timer-deg", `${deg}deg`);
       circle.style.background = `conic-gradient(${left <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e6d7b5 0)`;
       if (room.status === "game" && left <= 0 && !room.autoAdvanceAt && state.role === "teacher") {
-        mutateRoom((draft) => {
-          draft.reveal = true;
-          draft.autoAdvanceAt = Date.now() + 5000;
-        });
+        if (!state.autoRevealBusy) {
+          state.autoRevealBusy = true;
+          transactRoom((draft) => {
+            if (draft.status !== "game" || draft.autoAdvanceAt || currentRemaining(draft) > 0) return false;
+            draft.reveal = true;
+            draft.autoAdvanceAt = Date.now() + 5000;
+          }, "timer reveal").finally(() => {
+            state.autoRevealBusy = false;
+          });
+        }
         return;
       }
       if (room.status === "game" && room.autoAdvanceAt) {
