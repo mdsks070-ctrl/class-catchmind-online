@@ -215,3 +215,12 @@ http://127.0.0.1:8765/class_catchmind_online.html
 ```text
 이 repo의 HANDOFF.md와 README.md를 먼저 읽고, class_catchmind_online.html의 Firebase Realtime Database 연결을 실제 기기 2대로 테스트해줘. 현재 DB는 생성됐고 `/rooms` 규칙은 수업 프로토타입용으로 열려 있으며, 학생 입장은 6학년 고정 + 반/번호 입력 방식이야. 목표는 반에서 여러 기기로 접속하는 캐치마인드식 그림 퀴즈야.
 ```
+
+## Deployment
+
+- Public app URL: `https://mdsks070-ctrl.github.io/class-catchmind-online/`
+- Student join URL format: `https://mdsks070-ctrl.github.io/class-catchmind-online/?room=ROOMCODE`
+- Admin URL format: `https://mdsks070-ctrl.github.io/class-catchmind-online/?room=ROOMCODE&admin=1`
+- GitHub Pages source: `gh-pages` branch, `/ (root)`.
+- Repository visibility was changed to public so GitHub Pages can serve the app.
+- Current deployed branch contains `index.html` and `class_catchmind_online.html`, both pointing to the classroom app.
