@@ -2173,6 +2173,7 @@
       warned: false,
       connected: false,
       lastConnectedAt: 0,
+      lastRoomEventAt: 0,
       connectionRef: null,
       connectionHandler: null
     };
@@ -2180,7 +2181,12 @@
     const rankScores = [100, 90, 80, 70, 60, 50];
     const autoAdvanceDelayMs = 5000;
     const answerRevealDelayMs = 3000;
-    const remotePollMs = 1200;
+    const maxPlayers = 24;
+    const remotePollMs = 6000;
+    const remoteSilenceBeforePollMs = 9000;
+    const roomRecoveryMs = 1500;
+    const strokeBatchMs = 80;
+    const strokePointMinDistance = 3;
     const fallbackWords = [
       "사과", "바나나", "수박", "딸기", "아이스크림", "떡볶이", "라면", "김밥", "피자", "햄버거", "케이크", "우산",
       "고양이", "강아지", "토끼", "판다", "펭귄", "사자", "코끼리", "기린", "돌고래", "공룡", "나비", "꿀벌",
@@ -2225,14 +2231,19 @@
       currentStroke: null,
       lastPoint: null,
       lastStrokeCount: -1,
+      lastStrokeId: "",
       lastClearId: null,
       lastToastKey: "",
       lastSoundKey: "",
       roundAdvanceBusy: false,
       autoRevealBusy: false,
       remotePollBusy: false,
+      presenceBusy: false,
+      presenceKey: "",
+      pendingStrokes: [],
+      strokeFlushTimer: null,
+      strokeFlushBusy: false,
       timerTick: null,
-      heartbeatTick: null,
       roomTick: null,
       remotePollTick: null
     };
@@ -2285,6 +2296,9 @@
         if (firebaseState.connected) {
           firebaseState.warned = false;
           firebaseState.lastConnectedAt = Date.now();
+          syncStudentPresence();
+        } else {
+          state.presenceKey = "";
         }
         updateConnectionStatus();
       };
@@ -2315,6 +2329,55 @@
       return false;
     }
 
+    async function syncStudentPresence() {
+      if (
+        state.testMode
+        || state.role !== "student"
+        || !state.roomCode
+        || !state.playerId
+        || !state.name
+        || !hasFirebase()
+        || !firebaseState.connected
+        || state.presenceBusy
+      ) return;
+      const code = state.roomCode;
+      const playerId = state.playerId;
+      const presenceKey = `${code}:${playerId}`;
+      if (state.presenceKey === presenceKey) return;
+      state.presenceBusy = true;
+      try {
+        const ref = firebaseRoomRef(code)?.child(`players/${playerId}`);
+        if (!ref) return;
+        const offlineState = {
+          online: false,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP
+        };
+        await ref.onDisconnect().update(offlineState);
+        await ref.update({
+          online: true,
+          lastSeen: firebase.database.ServerValue.TIMESTAMP,
+          name: state.name
+        });
+        state.presenceKey = presenceKey;
+      } catch (error) {
+        reportFirebaseError("presence", error);
+      } finally {
+        state.presenceBusy = false;
+      }
+    }
+
+    function markStudentOffline() {
+      if (state.testMode || state.role !== "student" || !state.roomCode || !state.playerId || !hasFirebase()) return;
+      const ref = firebaseRoomRef(state.roomCode)?.child(`players/${state.playerId}`);
+      state.presenceKey = "";
+      if (!ref) return;
+      ref.onDisconnect().cancel().catch(() => {});
+      ref.update({
+        online: false,
+        lastSeen: firebase.database.ServerValue.TIMESTAMP
+      }).catch((error) => reportFirebaseError("leave", error));
+    }
+
     async function writeRemoteRoom(room, attempts = 4) {
       const ref = firebaseRoomRef(room?.code);
       if (!ref) return false;
@@ -2336,10 +2399,11 @@
 
     async function joinRemoteRoom(code, fallbackRoom, student, now, attempts = 4) {
       const ref = firebaseRoomRef(code);
-      if (!ref) return { room: null, missingRoom: false };
+      if (!ref) return { room: null, missingRoom: false, roomFull: false };
       let lastError = null;
       for (let attempt = 1; attempt <= attempts; attempt += 1) {
         let missingRoom = false;
+        let roomFull = false;
         try {
           await waitForFirebaseConnected(attempt === 1 ? 2500 : 1000);
           const result = await ref.transaction((current) => {
@@ -2348,21 +2412,26 @@
               missingRoom = true;
               return undefined;
             }
+            if (!roomHasCapacity(draft, student.id)) {
+              roomFull = true;
+              return undefined;
+            }
             upsertStudent(draft, student, now);
             draft.revision = (Number(draft.revision) || 0) + 1;
             draft.updatedAt = Date.now();
             return draft;
           }, undefined, false);
           const value = result?.snapshot?.val();
-          if (value) return { room: storeRoomSnapshot(value), missingRoom: false };
-          if (missingRoom) return { room: null, missingRoom: true };
+          if (result?.committed && value) return { room: storeRoomSnapshot(value), missingRoom: false, roomFull: false };
+          if (roomFull) return { room: null, missingRoom: false, roomFull: true };
+          if (missingRoom) return { room: null, missingRoom: true, roomFull: false };
         } catch (error) {
           lastError = error;
         }
         await delay(250 * attempt);
       }
       if (lastError) reportFirebaseError("join", lastError);
-      return { room: null, missingRoom: false };
+      return { room: null, missingRoom: false, roomFull: false };
     }
 
     function saveRemoteRoom(room) {
@@ -2395,6 +2464,7 @@
       firebaseState.roomRef = null;
       firebaseState.roomHandler = null;
       firebaseState.watchCode = null;
+      firebaseState.lastRoomEventAt = 0;
     }
 
     function startFirebaseWatch(code = state.roomCode) {
@@ -2408,6 +2478,7 @@
       stopFirebaseWatch();
       const ref = firebaseRoomRef(normalized);
       const handler = (snapshot) => {
+        firebaseState.lastRoomEventAt = Date.now();
         const room = normalizeRoom(snapshot.val());
         if (!room?.code) return;
         const local = readRoom(room.code);
@@ -2503,10 +2574,17 @@
         score: Number(previous.score) || 0,
         joinedAt: Number(previous.joinedAt) || now,
         lastSeen: now,
+        online: true,
         chatBlocked: Boolean(previous.chatBlocked),
         blockedRound: Number(previous.blockedRound) || null
       };
       return room.players[student.id];
+    }
+
+    function roomHasCapacity(room, playerId) {
+      if (!room) return false;
+      if (room.players?.[playerId]) return true;
+      return Object.keys(room.players || {}).length < (Number(room.maxPlayers) || maxPlayers);
     }
 
     function splitWords(value) {
@@ -2564,7 +2642,19 @@
       room.code = String(room.code).toUpperCase();
       room.words = Array.isArray(room.words) ? room.words : [];
       room.used = Array.isArray(room.used) ? room.used : [];
-      room.strokes = Array.isArray(room.strokes) ? room.strokes : [];
+      room.strokes = Array.isArray(room.strokes)
+        ? room.strokes
+        : room.strokes && typeof room.strokes === "object"
+          ? Object.entries(room.strokes).map(([id, stroke]) => ({ ...stroke, id: stroke?.id || id }))
+          : [];
+      room.strokes = room.strokes
+        .filter((stroke) => stroke && typeof stroke === "object" && Array.isArray(stroke.points))
+        .sort((a, b) => {
+          const aTime = Number(a.at) || Number.parseInt(String(a.id || "0"), 10) || 0;
+          const bTime = Number(b.at) || Number.parseInt(String(b.id || "0"), 10) || 0;
+          return aTime - bTime;
+        })
+        .slice(-260);
       room.guesses = Array.isArray(room.guesses) ? room.guesses : [];
       room.roundWinners = Array.isArray(room.roundWinners) ? room.roundWinners : [];
       room.players = room.players && typeof room.players === "object" ? room.players : {};
@@ -2578,11 +2668,13 @@
         player.score = Number(player.score) || 0;
         player.joinedAt = Number(player.joinedAt) || Date.now();
         player.lastSeen = Number(player.lastSeen) || 0;
+        player.online = player.online !== false;
         player.chatBlocked = Boolean(player.chatBlocked);
         player.blockedRound = Number(player.blockedRound) || null;
       });
       room.duration = Number(room.duration) || 120;
       room.roundLimit = Number(room.roundLimit) || 5;
+      room.maxPlayers = maxPlayers;
       room.round = Number(room.round) || 0;
       room.revision = Number(room.revision) || 0;
       room.currentWordIndex = Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1;
@@ -2702,9 +2794,7 @@
     }
 
     function activePlayers(room = state.room) {
-      if (state.testMode) return roomPlayers(room);
-      const now = Date.now();
-      return roomPlayers(room).filter((player) => now - player.lastSeen < 12000);
+      return roomPlayers(room).filter((player) => player.online !== false);
     }
 
     function rosterPlayers(room = state.room) {
@@ -2718,14 +2808,11 @@
     }
 
     function activeRosterPlayers(room = state.room) {
-      if (state.testMode) return rosterPlayers(room);
-      const now = Date.now();
-      return rosterPlayers(room).filter((player) => now - player.lastSeen < 12000);
+      return rosterPlayers(room).filter((player) => player.online !== false);
     }
 
     function drawerCandidates(room = state.room) {
-      const active = activeRosterPlayers(room);
-      return active.length ? active : rosterPlayers(room);
+      return activeRosterPlayers(room);
     }
 
     function assignDrawerForRound(room) {
@@ -2938,6 +3025,7 @@
         code: uiTestRoomCode,
         teacherId: `test-teacher-${state.clientId}`,
         teacherName: "테스트 선생님",
+        maxPlayers,
         duration: 180,
         answerMode: "auto",
         roundLimit: 3,
@@ -2999,6 +3087,7 @@
       state.room = room;
       state.roomCode = uiTestRoomCode;
       state.lastStrokeCount = -1;
+      state.lastStrokeId = "";
       state.lastClearId = null;
       resetCanvas();
       return room;
@@ -3107,6 +3196,7 @@
     }
 
     function navigateNormal(screenName) {
+      if (!state.testMode && state.role === "student") markStudentOffline();
       if (state.testMode) exitUiTestMode(true);
       showScreen(screenName);
     }
@@ -3129,6 +3219,7 @@
           code,
           teacherId: state.clientId,
           teacherName,
+          maxPlayers,
           duration,
           answerMode,
           roundLimit,
@@ -3190,16 +3281,21 @@
           const result = await joinRemoteRoom(code, room, student, now, 4);
           if (result.room) {
             room = result.room;
+          } else if (result.roomFull) {
+            showToast(`이 방은 최대 ${maxPlayers}명까지 참여할 수 있습니다.`);
+            return;
           } else if (result.missingRoom) {
             showToast("방 코드를 다시 확인해주세요.");
             return;
           } else {
-            upsertStudent(room, student, now);
-            room = saveLocalRoom(room);
-            saveRemoteRoom(room);
-            showToast("온라인 연결이 불안정해 재동기화를 시도합니다.");
+            showToast("온라인 연결이 불안정합니다. 잠시 후 다시 입장해 주세요.");
+            return;
           }
         } else {
+          if (!roomHasCapacity(room, student.id)) {
+            showToast(`이 방은 최대 ${maxPlayers}명까지 참여할 수 있습니다.`);
+            return;
+          }
           upsertStudent(room, student, now);
           saveRoom(room);
         }
@@ -3219,48 +3315,26 @@
     }
 
     function stopRoomLoops() {
-      clearInterval(state.heartbeatTick);
       clearInterval(state.roomTick);
       clearInterval(state.timerTick);
       clearInterval(state.remotePollTick);
-      state.heartbeatTick = null;
+      clearTimeout(state.strokeFlushTimer);
       state.roomTick = null;
       state.timerTick = null;
       state.remotePollTick = null;
+      state.strokeFlushTimer = null;
+      state.pendingStrokes = [];
       state.remotePollBusy = false;
-    }
-
-    function heartbeat() {
-      if (state.role !== "student" || !state.roomCode) return;
-      const room = readRoom();
-      const playerId = currentPlayerId();
-      const player = room?.players?.[playerId];
-      if (!room || !player) return;
-      const now = Date.now();
-      player.lastSeen = now;
-      player.name = state.name;
-      if (state.testMode) {
-        storeRoomSnapshot(room);
-        return;
-      }
-      if (hasFirebase()) {
-        storeRoomSnapshot(room, false);
-        const ref = firebaseRoomRef(room.code);
-        ref?.update({
-          [`players/${playerId}/lastSeen`]: now,
-          [`players/${playerId}/name`]: state.name
-        }).catch((error) => reportFirebaseError("heartbeat", error));
-        return;
-      }
-      storeRoomSnapshot(room);
     }
 
     async function pollRemoteRoom() {
       if (state.testMode || !hasFirebase() || !state.roomCode || state.remotePollBusy) return;
+      if (firebaseState.lastRoomEventAt && Date.now() - firebaseState.lastRoomEventAt < remoteSilenceBeforePollMs) return;
       state.remotePollBusy = true;
       try {
         const local = readRoom();
         const remote = await fetchRemoteRoom(state.roomCode);
+        firebaseState.lastRoomEventAt = Date.now();
         if (remote && shouldAcceptRemoteRoom(local, remote)) storeRoomSnapshot(remote);
       } finally {
         state.remotePollBusy = false;
@@ -3276,19 +3350,16 @@
       }
       state.roomTick = setInterval(() => {
         const room = readRoom();
-        if (room) {
+        if (room && (!state.room || room.revision !== state.room.revision || room.updatedAt !== state.room.updatedAt)) {
           state.room = room;
           render();
         }
-      }, 500);
+      }, roomRecoveryMs);
       state.timerTick = setInterval(renderTimer, 250);
       if (!state.testMode && hasFirebase()) {
         state.remotePollTick = setInterval(pollRemoteRoom, remotePollMs);
-        setTimeout(pollRemoteRoom, 250);
-      }
-      if (state.role === "student") {
-        state.heartbeatTick = setInterval(heartbeat, 2500);
-        heartbeat();
+        setTimeout(pollRemoteRoom, 1200 + Math.random() * 1800);
+        syncStudentPresence();
       }
     }
 
@@ -3302,21 +3373,12 @@
       room.solvedBy = room.solvedBy || null;
     }
 
-    async function refreshLatestRoom() {
-      if (state.testMode || !hasFirebase() || !state.roomCode) return readRoom();
-      const latest = await loadLatestRoom(state.roomCode);
-      if (latest?.code) {
-        return storeRoomSnapshot(latest);
-      }
-      return readRoom();
-    }
-
     async function nextRound() {
       if (state.roundAdvanceBusy) return;
       state.roundAdvanceBusy = true;
       let blockedMessage = "";
       try {
-        const baseRoom = await refreshLatestRoom();
+        const baseRoom = readRoom();
         const expectedRound = Number(baseRoom?.round) || 0;
         const expectedStatus = baseRoom?.status || "";
         const updated = await transactRoom((room) => {
@@ -3381,7 +3443,6 @@
     }
 
     async function backToLobby() {
-      await refreshLatestRoom();
       await transactRoom((room) => {
         if (room.status === "finished") {
           room.round = 0;
@@ -3411,7 +3472,6 @@
     }
 
     async function changeDrawerForRoom() {
-      await refreshLatestRoom();
       let message = "";
       let changed = false;
       const updated = await transactRoom((room) => {
@@ -3612,6 +3672,7 @@
       ctx.fillText("Drawing Quiz", 34, canvas.height - 34);
       ctx.restore();
       state.lastStrokeCount = 0;
+      state.lastStrokeId = "";
     }
 
     function drawStroke(stroke) {
@@ -3623,6 +3684,14 @@
       ctx.globalAlpha = stroke.tool === "marker" ? .24 : 1;
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.tool === "marker" ? stroke.size * 2.2 : stroke.size;
+      if (stroke.points.length === 1) {
+        ctx.fillStyle = stroke.color;
+        ctx.beginPath();
+        ctx.arc(stroke.points[0].x, stroke.points[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
       ctx.beginPath();
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
       stroke.points.forEach((point) => ctx.lineTo(point.x, point.y));
@@ -3633,13 +3702,21 @@
     function renderCanvas() {
       const room = state.room;
       if (!room) return;
+      let start = 0;
       if (state.lastClearId !== room.clearId || state.lastStrokeCount > room.strokes.length) {
         resetCanvas();
         state.lastClearId = room.clearId;
+      } else if (state.lastStrokeId) {
+        const lastIndex = room.strokes.findIndex((stroke) => stroke.id === state.lastStrokeId);
+        if (lastIndex >= 0) {
+          start = lastIndex + 1;
+        } else if (room.strokes.length) {
+          resetCanvas();
+        }
       }
-      const start = Math.max(0, state.lastStrokeCount);
       room.strokes.slice(start).forEach(drawStroke);
       state.lastStrokeCount = room.strokes.length;
+      state.lastStrokeId = room.strokes.at(-1)?.id || "";
     }
 
     function pointFromEvent(event) {
@@ -3648,6 +3725,62 @@
         x: (event.clientX - rect.left) * canvas.width / rect.width,
         y: (event.clientY - rect.top) * canvas.height / rect.height
       };
+    }
+
+    function queueStroke(stroke) {
+      state.pendingStrokes.push(stroke);
+      if (state.strokeFlushBusy || state.strokeFlushTimer) return;
+      state.strokeFlushTimer = setTimeout(() => {
+        state.strokeFlushTimer = null;
+        flushPendingStrokes();
+      }, strokeBatchMs);
+    }
+
+    async function flushPendingStrokes() {
+      if (state.strokeFlushBusy || !state.pendingStrokes.length) return;
+      state.strokeFlushBusy = true;
+      const batch = state.pendingStrokes.splice(0);
+      try {
+        const room = readRoom();
+        const playerId = currentPlayerId();
+        const valid = batch.filter((stroke) => (
+          room?.status === "game"
+          && room.drawerId === playerId
+          && Number(room.round) === Number(stroke.round)
+          && Number(room.clearId) === Number(stroke.clearId)
+        ));
+        if (!valid.length || state.testMode || !hasFirebase()) return;
+        const ref = firebaseRoomRef(room.code);
+        if (!ref) return;
+        const updates = {
+          revision: firebase.database.ServerValue.increment(1),
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        };
+        valid.forEach((stroke) => {
+          updates[`strokes/${stroke.id}`] = stroke;
+        });
+        let lastError = null;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            await ref.update(updates);
+            firebaseState.warned = false;
+            firebaseState.lastRoomEventAt = Date.now();
+            return;
+          } catch (error) {
+            lastError = error;
+            await delay(160 * attempt);
+          }
+        }
+        reportFirebaseError("stroke", lastError);
+      } finally {
+        state.strokeFlushBusy = false;
+        if (state.pendingStrokes.length && !state.strokeFlushTimer) {
+          state.strokeFlushTimer = setTimeout(() => {
+            state.strokeFlushTimer = null;
+            flushPendingStrokes();
+          }, strokeBatchMs);
+        }
+      }
     }
 
     function startDraw(event) {
@@ -3661,6 +3794,9 @@
       state.lastPoint = point;
       state.currentStroke = {
         id: `${Date.now()}${Math.random().toString(36).slice(2, 6)}`,
+        at: Date.now(),
+        round: Number(state.room.round) || 0,
+        clearId: Number(state.room.clearId) || 0,
         tool: state.tool,
         color: state.color,
         size: state.size,
@@ -3673,6 +3809,9 @@
       if (state.inputMode === "pointer" && event.type.startsWith("mouse")) return;
       if (state.inputMode === "mouse" && event.type.startsWith("pointer")) return;
       const point = pointFromEvent(event);
+      const dx = point.x - state.lastPoint.x;
+      const dy = point.y - state.lastPoint.y;
+      if (dx * dx + dy * dy < strokePointMinDistance * strokePointMinDistance) return;
       drawStroke({ ...state.currentStroke, points: [state.lastPoint, point] });
       state.currentStroke.points.push(point);
       state.lastPoint = point;
@@ -3691,11 +3830,20 @@
       state.inputMode = null;
       const stroke = state.currentStroke;
       state.currentStroke = null;
-      transactRoom((room) => {
-        if (room.status !== "game" || room.drawerId !== currentPlayerId()) return false;
-        room.strokes.push(stroke);
-        room.strokes = room.strokes.slice(-260);
-      }, "stroke");
+      const room = readRoom();
+      if (
+        !room
+        || room.status !== "game"
+        || room.drawerId !== currentPlayerId()
+        || Number(room.round) !== Number(stroke.round)
+        || Number(room.clearId) !== Number(stroke.clearId)
+      ) return;
+      if (stroke.points.length === 1) drawStroke(stroke);
+      room.strokes = [...room.strokes.filter((item) => item.id !== stroke.id), stroke].slice(-260);
+      state.lastStrokeCount = room.strokes.length;
+      state.lastStrokeId = stroke.id;
+      storeRoomSnapshot(room);
+      queueStroke(stroke);
     }
 
     function render() {
@@ -3711,7 +3859,7 @@
       document.querySelector("#joinLinkText").textContent = "QR을 찍으면 방 코드 없이 바로 입장합니다.";
       renderJoinQr(room.code);
       document.querySelector("#lobbyTeacherName").textContent = room.teacherName;
-      document.querySelector("#lobbyStudentCount").textContent = String(activePlayers(room).length);
+      document.querySelector("#lobbyStudentCount").textContent = `${activePlayers(room).length} / ${room.maxPlayers || maxPlayers}`;
       document.querySelector("#lobbyDuration").textContent = `${room.duration}s`;
       document.querySelector("#lobbyGuide").textContent = state.role === "teacher" ? "학생들에게 이 코드를 알려주세요." : "선생님이 게임을 시작할 때까지 기다립니다.";
       document.querySelector("#lobbyTeacherActions").style.display = state.role === "teacher" ? "grid" : "none";
@@ -3860,7 +4008,7 @@
       }
       circle.style.setProperty("--timer-deg", `${deg}deg`);
       circle.style.background = `conic-gradient(${left <= 10 ? "var(--red)" : "var(--green)"} var(--timer-deg), #e6d7b5 0)`;
-      if (room.status === "game" && left <= 0 && !room.autoAdvanceAt && (state.role === "teacher" || state.role === "admin")) {
+      if (room.status === "game" && left <= 0 && !room.autoAdvanceAt) {
         if (!state.autoRevealBusy) {
           state.autoRevealBusy = true;
           transactRoom((draft) => {
@@ -4091,7 +4239,6 @@
       const playerId = button.dataset.playerId;
       const action = button.dataset.adminAction;
       let message = "";
-      await refreshLatestRoom();
       await transactRoom((room) => {
         const player = room.players[playerId];
         if (!player) {
@@ -4134,7 +4281,6 @@
       const action = button.dataset.guessAction;
       if (action !== "accept" || !guessId) return;
       let message = "";
-      await refreshLatestRoom();
       await transactRoom((room) => {
         if (room.status !== "game") {
           message = "게임 중에만 정답 인정이 가능합니다.";
