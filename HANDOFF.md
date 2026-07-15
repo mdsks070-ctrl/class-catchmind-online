@@ -384,3 +384,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The teacher game screen no longer shows live student submissions in its answer log.
 - A prompt is added to `revealedAnswers` only when the shared 3-second answer reveal begins, and the teacher sees that published history newest-first.
 - The admin/operation window keeps the detailed live submission log and manual answer controls.
+
+## 2026-07-15 24-Round Classroom Option
+
+- Added `24라운드 · 모두 한 번씩` and made it the default room-creation choice.
+- The existing class/number roster order assigns a different online student each round, so a full 24-student room gives every student one drawing turn.
+- The shorter 3, 5, 8, and 12-round choices remain available.
