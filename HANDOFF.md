@@ -352,6 +352,13 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - The drawing student still sees the prompt so they can draw.
 - Verified with an automated Chrome UI test: teacher view showed `가려진 제시어`, admin view showed `바나나`, and drawer view still showed `바나나`.
 
+## 2026-07-15 Drawing Role Stability
+
+- Removed the redundant full-room save after a student joins. A late join can no longer overwrite a newer round, drawing, or drawer assignment.
+- Added a monotonic room `revision` to joins, answers, strokes, controls, and other transactions so delayed Firebase snapshots cannot replace newer gameplay state even when client clocks differ.
+- Room normalization no longer invents a missing drawer during reads. Drawer assignment now changes only when a round starts or the teacher/admin explicitly changes it.
+- Added regression checks for stale snapshot rejection, same-version heartbeat acceptance, drawer persistence, and student rejoin behavior.
+
 ## 2026-07-09 Sync Polling And Answer Reveal
 
 - Added a 1.2-second Firebase remote polling fallback alongside the realtime watcher so rooms recover faster when `on("value")` updates lag.
