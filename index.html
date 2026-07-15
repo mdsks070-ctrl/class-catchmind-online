@@ -2656,6 +2656,9 @@
         })
         .slice(-260);
       room.guesses = Array.isArray(room.guesses) ? room.guesses : [];
+      room.revealedAnswers = (Array.isArray(room.revealedAnswers) ? room.revealedAnswers : [])
+        .filter((item) => item && typeof item === "object" && String(item.word || "").trim())
+        .slice(-100);
       room.roundWinners = Array.isArray(room.roundWinners) ? room.roundWinners : [];
       room.players = room.players && typeof room.players === "object" ? room.players : {};
       Object.entries(room.players).forEach(([key, player]) => {
@@ -3068,6 +3071,7 @@
             at: now - 17000
           }
         ],
+        revealedAnswers: [],
         roundWinners: [correct.id],
         players: {
           [drawer.id]: drawer,
@@ -3237,6 +3241,7 @@
           clearId: 0,
           strokes: [],
           guesses: [],
+          revealedAnswers: [],
           roundWinners: [],
           players: {},
           createdAt: now,
@@ -3455,6 +3460,7 @@
           room.solvedBy = null;
           room.reveal = false;
           room.guesses = [];
+          room.revealedAnswers = [];
           room.roundWinners = [];
           room.strokes = [];
           room.clearId += 1;
@@ -3515,6 +3521,14 @@
         await transactRoom((room) => {
           if (room.status !== "game" || !room.autoAdvanceAt || room.autoAdvanceReason === "answer") return false;
           if (room.autoAdvanceAt > Date.now()) return false;
+          const word = currentWord(room);
+          if (word && !(room.revealedAnswers || []).some((item) => Number(item.round) === Number(room.round))) {
+            room.revealedAnswers.push({
+              round: Number(room.round) || 0,
+              word,
+              at: Date.now()
+            });
+          }
           room.reveal = true;
           room.autoAdvanceAt = Date.now() + answerRevealDelayMs;
           room.autoAdvanceReason = "answer";
@@ -3907,7 +3921,11 @@
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
       const answerFormVisible = state.role === "student" && room.status === "game" && !currentIsDrawer;
       document.querySelector("#answerForm").style.display = answerFormVisible ? "grid" : "none";
-      document.querySelector("#chatPanelTitle").textContent = answerFormVisible ? "정답 입력" : "답변 로그";
+      document.querySelector("#chatPanelTitle").textContent = answerFormVisible
+        ? "정답 입력"
+        : state.role === "teacher"
+          ? "공개된 정답"
+          : "답변 로그";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
       document.querySelector("#revealAnswerBtn").disabled = room.status !== "game" || Boolean(room.autoAdvanceAt);
       const currentStudent = room.players[currentPlayerId()];
@@ -4099,9 +4117,25 @@
       `).join("");
     }
 
+    function revealedAnswerListHtml(room) {
+      const answers = [...(room?.revealedAnswers || [])].sort((a, b) => Number(b.round) - Number(a.round));
+      if (!answers.length) return '<div class="empty">아직 공개된 정답이 없습니다.</div>';
+      return answers.map((answer) => `
+        <div class="chat-item correct">
+          <div class="chat-top">
+            <span class="chat-name">${Number(answer.round) || 0}라운드</span>
+            <span class="chat-time">${new Date(answer.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <div class="chat-text">${escapeHtml(answer.word)}</div>
+        </div>
+      `).join("");
+    }
+
     function renderChat() {
       const room = state.room;
-      document.querySelector("#chatList").innerHTML = chatListHtml(room, state.role);
+      document.querySelector("#chatList").innerHTML = state.role === "teacher"
+        ? revealedAnswerListHtml(room)
+        : chatListHtml(room, state.role);
       const adminChat = document.querySelector("#adminChatList");
       if (adminChat) adminChat.innerHTML = chatListHtml(room, "admin");
     }
