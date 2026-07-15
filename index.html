@@ -2349,6 +2349,7 @@
               return undefined;
             }
             upsertStudent(draft, student, now);
+            draft.revision = (Number(draft.revision) || 0) + 1;
             draft.updatedAt = Date.now();
             return draft;
           }, undefined, false);
@@ -2549,8 +2550,13 @@
     function shouldAcceptRemoteRoom(local, remote) {
       if (!remote?.code) return false;
       if (!local?.code) return true;
-      if (Number(remote.updatedAt || 0) >= Number(local.updatedAt || 0)) return true;
-      return roomProgressKey(remote) !== roomProgressKey(local);
+      const localRevision = Number(local.revision) || 0;
+      const remoteRevision = Number(remote.revision) || 0;
+      if (remoteRevision !== localRevision) return remoteRevision > localRevision;
+      const localUpdatedAt = Number(local.updatedAt) || 0;
+      const remoteUpdatedAt = Number(remote.updatedAt) || 0;
+      if (remoteUpdatedAt !== localUpdatedAt) return remoteUpdatedAt > localUpdatedAt;
+      return roomProgressKey(remote) === roomProgressKey(local);
     }
 
     function normalizeRoom(room) {
@@ -2578,13 +2584,10 @@
       room.duration = Number(room.duration) || 120;
       room.roundLimit = Number(room.roundLimit) || 5;
       room.round = Number(room.round) || 0;
+      room.revision = Number(room.revision) || 0;
       room.currentWordIndex = Number.isFinite(Number(room.currentWordIndex)) ? Number(room.currentWordIndex) : -1;
       room.drawerId = typeof room.drawerId === "string" ? room.drawerId : "";
       if (room.drawerId && !room.players[room.drawerId]) room.drawerId = "";
-      if (room.status === "game" && !room.drawerId) {
-        const candidates = rosterPlayers(room);
-        if (candidates.length) room.drawerId = candidates[Math.max(0, room.round - 1) % candidates.length].id;
-      }
       room.clearId = Number(room.clearId) || 0;
       room.autoAdvanceAt = Number(room.autoAdvanceAt) || null;
       room.autoAdvanceReason = typeof room.autoAdvanceReason === "string" ? room.autoAdvanceReason : "";
@@ -2606,6 +2609,7 @@
     function saveLocalRoom(room, broadcast = true) {
       room = normalizeRoom(room);
       if (!room?.code) return null;
+      room.revision = (Number(room.revision) || 0) + 1;
       room.updatedAt = Date.now();
       return storeRoomSnapshot(room, broadcast);
     }
@@ -2657,6 +2661,7 @@
           if (!room?.code) return undefined;
           const outcome = mutator(room);
           if (outcome === false) return undefined;
+          room.revision = (Number(room.revision) || 0) + 1;
           room.updatedAt = Date.now();
           return room;
         }, undefined, false);
@@ -2982,6 +2987,7 @@
           [correct.id]: correct
         },
         createdAt: now - 90000,
+        revision: 1,
         updatedAt: now
       };
     }
@@ -3143,6 +3149,7 @@
           roundWinners: [],
           players: {},
           createdAt: now,
+          revision: 0,
           updatedAt: now
         };
         state.role = "teacher";
@@ -3201,7 +3208,6 @@
         state.playerId = student.id;
         state.name = student.name;
         saveStudentIdentity(student);
-        saveRoom(room);
         startRoomLoops();
         showScreen(room.status === "game" ? "game" : "lobby");
         updateConnectionStatus();
@@ -3571,6 +3577,7 @@
               feedback = outcome.message;
               return undefined;
             }
+            room.revision = (Number(room.revision) || 0) + 1;
             room.updatedAt = Date.now();
             return room;
           }, undefined, false);
