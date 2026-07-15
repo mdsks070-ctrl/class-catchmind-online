@@ -74,7 +74,7 @@
   - 무응답이나 시간 종료 후 입력은 점수 없음
   - 정답 채팅에는 `정답 n등 +점수`가 표시됨
 - Firebase 동시성 보강
-  - 학생 heartbeat는 방 전체를 덮어쓰지 않고 본인 접속 상태만 부분 업데이트
+  - 학생 접속 상태는 주기적 heartbeat 대신 Firebase `onDisconnect`로 접속/종료 때만 부분 업데이트
   - 학생 입장은 Firebase transaction으로 처리해 여러 명이 동시에 들어와도 참가자 목록이 누락되지 않도록 보강
   - 정답 제출은 Firebase transaction으로 처리해 여러 학생이 맞혀도 정답 순서/점수 기록이 덮이지 않도록 보강
   - 교사 그림 저장, 정답 공개, 다음 문제, 운영창 봉인 조작도 최신 방 상태 기준 transaction으로 처리
@@ -250,7 +250,7 @@ http://127.0.0.1:8765/class_catchmind_online.html
 
 ## 2026-07-09 Round And Answer Reliability
 
-- Student heartbeat no longer bumps the room-wide `updatedAt`, preventing stale local snapshots from blocking Firebase round/answer updates.
+- Student presence changes do not bump the room-wide `updatedAt`, preventing stale local snapshots from blocking Firebase round/answer updates.
 - Remote room updates are accepted when round, guesses, winners, strokes, reveal state, or drawer state differ, even if a stale local timestamp is newer.
 - `nextRound()` now checks the expected round/status inside the transaction, preventing double-click or admin/teacher simultaneous clicks from skipping a round.
 - Admin window now has `정답 공개` and `다음 문제/게임 시작/결과 보기` controls.
@@ -357,7 +357,7 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Removed the redundant full-room save after a student joins. A late join can no longer overwrite a newer round, drawing, or drawer assignment.
 - Added a monotonic room `revision` to joins, answers, strokes, controls, and other transactions so delayed Firebase snapshots cannot replace newer gameplay state even when client clocks differ.
 - Room normalization no longer invents a missing drawer during reads. Drawer assignment now changes only when a round starts or the teacher/admin explicitly changes it.
-- Added regression checks for stale snapshot rejection, same-version heartbeat acceptance, drawer persistence, and student rejoin behavior.
+- Added regression checks for stale snapshot rejection, same-version presence acceptance, drawer persistence, and student rejoin behavior.
 
 ## 2026-07-09 Sync Polling And Answer Reveal
 
@@ -367,3 +367,14 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Because `room.reveal` is true during the reveal phase, late submissions no longer score after the answer is shown.
 - Updated the teacher/admin control label from `5초 후 넘기기` to `5초 후 정답 공개`.
 - Verified with an automated Chrome E2E test: after a correct answer, the remaining student screen drove `correct -> answer reveal`, showed `apple` with timer title `정답 공개`, then advanced to round 2.
+
+## 2026-07-15 24-Player Reliability Pass
+
+- Capped each room at 24 persistent student identities while allowing the same class/number to reconnect without consuming another seat.
+- Removed 2.5-second student heartbeat writes and reduced fallback full-room polling to a silence-only recovery path.
+- Replaced heartbeats with Firebase `onDisconnect` presence updates, so offline students are skipped for future drawing turns without constant writes; an assigned drawer never changes mid-round automatically.
+- Any connected game screen can now start the timeout transition, so a no-answer round continues even when teacher/admin screens are closed.
+- Drawing strokes are thinned locally, shown immediately, batched briefly, and written to Firebase child paths instead of running a full-room transaction for every stroke.
+- Stroke writes carry their round and canvas revision, preventing a delayed stroke from entering a later round or a cleared canvas after the drawer changes.
+- Removed redundant remote reads before controls, answers, and round transitions; Firebase transactions remain the authority for concurrent scoring and advancement.
+- A failed online join no longer falls back to a stale full-room write that could overwrite players or bypass the room limit.
