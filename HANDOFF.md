@@ -378,3 +378,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Stroke writes carry their round and canvas revision, preventing a delayed stroke from entering a later round or a cleared canvas after the drawer changes.
 - Removed redundant remote reads before controls, answers, and round transitions; Firebase transactions remain the authority for concurrent scoring and advancement.
 - A failed online join no longer falls back to a stale full-room write that could overwrite players or bypass the room limit.
+
+## 2026-07-15 Teacher Revealed-Answer History
+
+- The teacher game screen no longer shows live student submissions in its answer log.
+- A prompt is added to `revealedAnswers` only when the shared 3-second answer reveal begins, and the teacher sees that published history newest-first.
+- The admin/operation window keeps the detailed live submission log and manual answer controls.
