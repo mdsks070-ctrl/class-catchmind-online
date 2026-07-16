@@ -451,6 +451,72 @@
       line-height: 1.4;
     }
 
+    .answer-reveal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #17300f;
+      color: #fff7dd;
+      pointer-events: none;
+    }
+
+    .answer-reveal-overlay[hidden] {
+      display: none !important;
+    }
+
+    .answer-reveal-content {
+      display: grid;
+      width: min(1040px, 100%);
+      justify-items: center;
+      gap: 18px;
+      text-align: center;
+      animation: answer-reveal-in .28s ease-out both;
+    }
+
+    .answer-reveal-kicker {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      padding: 7px 18px;
+      border: 2px solid rgba(255, 247, 221, .46);
+      border-radius: 999px;
+      background: rgba(255, 247, 221, .10);
+      font-size: 20px;
+      font-weight: 950;
+    }
+
+    .answer-reveal-word {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      color: #ffe189;
+      font-size: 64px;
+      font-weight: 950;
+      letter-spacing: 0;
+      line-height: 1.05;
+      text-shadow: 0 7px 0 rgba(0, 0, 0, .22);
+    }
+
+    .answer-reveal-countdown {
+      margin: 0;
+      color: #dceac6;
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    @keyframes answer-reveal-in {
+      from {
+        opacity: 0;
+        transform: scale(.94);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
     .connection-pill {
       display: inline-flex;
       align-items: center;
@@ -651,7 +717,7 @@
     }
 
     .game-screen {
-      grid-template-columns: minmax(440px, 1fr) minmax(280px, 340px);
+      grid-template-columns: minmax(440px, 1fr) minmax(320px, 380px);
       grid-template-rows: auto minmax(0, 1fr);
       grid-template-areas:
         "status status"
@@ -717,6 +783,21 @@
       margin: 0;
       color: #d8cda8;
       font-weight: 900;
+    }
+
+    .game-panel #roomMiniInfo {
+      display: inline-flex;
+      width: fit-content;
+      min-height: 38px;
+      align-items: center;
+      padding: 5px 12px;
+      border: 2px solid rgba(255, 225, 137, .42);
+      border-radius: 10px;
+      background: rgba(255, 225, 137, .10);
+      color: #ffe189;
+      font-size: 20px;
+      font-weight: 950;
+      letter-spacing: 0;
     }
 
     .game-panel .connection-pill {
@@ -928,6 +1009,18 @@
       font-size: 12px;
       font-weight: 950;
       white-space: nowrap;
+    }
+
+    body[data-role="student"][data-status="game"].is-current-drawer .role-badge {
+      border: 2px solid #d4ad5d;
+      background: #fff0bd;
+      color: #725000;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .role-badge {
+      border: 2px solid rgba(47, 143, 133, .34);
+      background: #e7f5ec;
+      color: #12613f;
     }
 
     .drawer-card {
@@ -1526,7 +1619,24 @@
       }
     }
 
+    @media (min-width: 721px) {
+      .game-panel #roomMiniInfo {
+        min-height: 46px;
+        padding: 7px 15px;
+        font-size: 26px;
+      }
+    }
+
     @media (min-width: 1121px) {
+      .answer-reveal-word {
+        font-size: 136px;
+      }
+
+      .answer-reveal-kicker,
+      .answer-reveal-countdown {
+        font-size: 24px;
+      }
+
       body.is-test-mode .page {
         padding-top: 18px;
       }
@@ -1539,7 +1649,7 @@
 
       .game-screen {
         height: calc(100vh - 36px);
-        grid-template-columns: minmax(720px, 1fr) minmax(280px, 320px);
+        grid-template-columns: minmax(680px, 1fr) minmax(340px, 380px);
         grid-template-rows: auto minmax(0, 1fr);
       }
 
@@ -1686,6 +1796,19 @@
     }
 
     @media (max-width: 720px) {
+      .answer-reveal-overlay {
+        padding: 18px;
+      }
+
+      .answer-reveal-word {
+        font-size: 64px;
+      }
+
+      .answer-reveal-kicker,
+      .answer-reveal-countdown {
+        font-size: 18px;
+      }
+
       .page {
         padding: 10px;
       }
@@ -1735,9 +1858,15 @@
       }
     }
 
+    @media (min-width: 721px) and (max-width: 1120px) {
+      .answer-reveal-word {
+        font-size: 96px;
+      }
+    }
+
     @media (min-width: 721px) and (min-height: 561px) {
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .game-screen {
-        grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
         grid-template-rows: auto minmax(0, 1fr);
         grid-template-areas:
           "status status"
@@ -2433,6 +2562,14 @@
     </div>
   </div>
 
+  <div class="answer-reveal-overlay" id="answerRevealOverlay" role="status" aria-live="assertive" hidden>
+    <div class="answer-reveal-content">
+      <span class="answer-reveal-kicker">정답 공개</span>
+      <strong class="answer-reveal-word" id="answerRevealWord">정답</strong>
+      <p class="answer-reveal-countdown" id="answerRevealCountdown">잠시 후 다음 문제로 넘어갑니다.</p>
+    </div>
+  </div>
+
   <div class="test-switcher" id="testSwitcher" hidden>
     <span id="testModeLabel">UI 테스트</span>
     <button type="button" data-test-view="teacher">교사</button>
@@ -2486,7 +2623,7 @@
     const palette = ["#222327", "#3776d6", "#1c9b72", "#de4d57", "#e8b33f", "#7357d8", "#ff8442", "#ffffff"];
     const rankScores = [100, 90, 80, 70, 60, 50];
     const autoAdvanceDelayMs = 5000;
-    const answerRevealDelayMs = 3000;
+    const answerRevealDelayMs = 5000;
     const maxPlayers = 24;
     const remotePollMs = 6000;
     const remoteSilenceBeforePollMs = 9000;
@@ -2809,6 +2946,10 @@
       Object.entries(screens).forEach(([key, element]) => {
         element.classList.toggle("active", key === name);
       });
+      if (name !== "game" && name !== "admin") {
+        const answerOverlay = document.querySelector("#answerRevealOverlay");
+        if (answerOverlay) answerOverlay.hidden = true;
+      }
     }
 
     function normalize(value) {
@@ -4251,7 +4392,7 @@
       document.querySelector("#lobbyDuration").textContent = `${room.duration}s`;
       document.querySelector("#lobbyGuide").textContent = state.role === "teacher" ? "학생들에게 이 코드를 알려주세요." : "선생님이 게임을 시작할 때까지 기다립니다.";
       document.querySelector("#lobbyTeacherActions").style.display = state.role === "teacher" ? "grid" : "none";
-      document.querySelector("#roomMiniInfo").textContent = `방 코드 ${room.code} · ${room.teacherName}`;
+      document.querySelector("#roomMiniInfo").textContent = `입장 코드 ${room.code}`;
       const drawer = currentDrawer(room);
       const drawerName = drawer ? drawer.name : "아직 없음";
       const currentIsDrawer = isCurrentDrawer(room);
@@ -4262,7 +4403,7 @@
       const drawerBanner = document.querySelector("#drawerBanner");
       drawerBanner.classList.toggle("show", room.status === "game" && Boolean(drawer));
       drawerBanner.innerHTML = drawer
-        ? `<span>${currentIsDrawer ? "내가 그리는 중" : "그리는 학생"}</span><strong>${escapeHtml(drawer.name)}</strong>`
+        ? `<span>${currentIsDrawer ? "내가 그림 그리는 중" : "지금 그리는 학생"}</span><strong>${escapeHtml(drawer.name)}</strong>`
         : "";
       document.querySelector("#drawerNameText").textContent = drawerName;
       document.querySelector("#drawerHelpText").textContent = room.status === "game"
@@ -4273,12 +4414,12 @@
           ? "게임이 끝났습니다."
           : "라운드가 시작되면 학생 중 한 명이 자동으로 배정됩니다.";
       document.querySelector("#roleBadge").textContent = state.role === "teacher"
-        ? "교사 진행"
+        ? "교사 진행 화면"
         : state.role === "admin"
           ? "운영 화면"
           : currentIsDrawer
-            ? "내 차례"
-            : "정답 입력";
+            ? "내가 그림 그리기"
+            : "내가 정답 맞히기";
       const canvasLock = document.querySelector("#canvasLock");
       canvasLock.textContent = drawAllowed
         ? ""
@@ -4379,8 +4520,25 @@
         : "대기 중";
     }
 
+    function renderAnswerReveal(room) {
+      const overlay = document.querySelector("#answerRevealOverlay");
+      const word = currentWord(room);
+      const active = Boolean(room?.status === "game" && room.reveal && word);
+      overlay.hidden = !active;
+      overlay.setAttribute("aria-hidden", String(!active));
+      if (!active) return;
+      const nextIn = room.autoAdvanceAt
+        ? Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000))
+        : 0;
+      document.querySelector("#answerRevealWord").textContent = word;
+      document.querySelector("#answerRevealCountdown").textContent = nextIn
+        ? `${nextIn}초 후 다음 문제로 넘어갑니다.`
+        : "다음 문제로 넘어갑니다.";
+    }
+
     function renderTimer() {
       const room = state.room;
+      renderAnswerReveal(room);
       if (!room) return;
       if (room.status === "finished") {
         document.querySelector("#timerText").textContent = "끝";
