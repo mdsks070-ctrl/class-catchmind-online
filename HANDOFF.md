@@ -390,3 +390,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Added `24라운드 · 모두 한 번씩` and made it the default room-creation choice.
 - The existing class/number roster order assigns a different online student each round, so a full 24-student room gives every student one drawing turn.
 - The shorter 3, 5, 8, and 12-round choices remain available.
+
+## 2026-07-16 Public Wrong-Answer Feed
+
+- Wrong guesses are visible during the round on the teacher screen and in a compact horizontal feed above each guessing student's answer field.
+- Correct or matched submissions stay masked as rank/status messages until the shared answer reveal begins.
+- The teacher feed combines live wrong guesses with previously revealed prompt history; the admin window still shows raw submissions and manual scoring controls.
+- The drawing student keeps the full drawing layout without the answer feed.
