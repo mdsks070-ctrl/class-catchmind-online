@@ -1242,6 +1242,43 @@
       display: none;
     }
 
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed {
+      grid-template-rows: auto auto;
+      gap: 6px;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed .panel-body {
+      display: block;
+      max-height: 94px;
+      padding: 8px 10px;
+      border: 2px solid #5f4728;
+      border-radius: 12px;
+      background: #263817;
+      overflow: hidden;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-list {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-item {
+      flex: 0 0 min(240px, 72vw);
+      padding: 7px 9px;
+      border-radius: 8px;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-time {
+      display: none;
+    }
+
+    body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-text {
+      margin-top: 2px;
+      font-size: 14px;
+    }
+
     body[data-role="student"][data-status="game"].is-current-drawer .chat-panel {
       display: none;
     }
@@ -1660,6 +1697,14 @@
           "canvas";
       }
 
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .game-screen {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 36%);
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+          "status status"
+          "canvas chat";
+      }
+
       body[data-role="student"][data-status="game"] .game-panel .panel-body {
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(112px, .7fr);
         gap: 6px;
@@ -1794,6 +1839,28 @@
         display: none;
       }
 
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed .panel-body {
+        display: block;
+        max-height: 48px;
+        padding: 4px 6px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-item {
+        flex-basis: min(190px, 52vw);
+        padding: 4px 7px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-top {
+        display: inline;
+        margin-right: 5px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-text {
+        display: inline;
+        margin-top: 0;
+        font-size: 13px;
+      }
+
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
         position: static;
         width: 100%;
@@ -1813,6 +1880,51 @@
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput,
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form .small-btn {
         min-height: 58px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel {
+        display: grid;
+        height: 100%;
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 0;
+        border: 2px solid #8b6a3e;
+        border-radius: 12px;
+        background: #efe0c6;
+        overflow: hidden;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed {
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 0;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed .panel-body {
+        grid-row: 1;
+        max-height: none;
+        padding: 7px;
+        border: 0;
+        border-radius: 0;
+        overflow-y: auto;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-list {
+        display: grid;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-item {
+        min-width: 0;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
+        grid-row: 2;
+        width: auto;
+        padding: 8px;
+        border: 0;
+        border-top: 2px solid #b9905e;
+        border-radius: 0;
+        box-shadow: none;
       }
     }
 
@@ -3923,9 +4035,9 @@
       const answerFormVisible = state.role === "student" && room.status === "game" && !currentIsDrawer;
       document.querySelector("#answerForm").style.display = answerFormVisible ? "grid" : "none";
       document.querySelector("#chatPanelTitle").textContent = answerFormVisible
-        ? "정답 입력"
+        ? "오답 로그"
         : state.role === "teacher"
-          ? "공개된 정답"
+          ? "오답 · 공개된 정답"
           : "답변 로그";
       document.querySelector("#nextRoundBtn").textContent = room.round >= room.roundLimit ? "결과 보기" : "다음 문제";
       document.querySelector("#revealAnswerBtn").disabled = room.status !== "game" || Boolean(room.autoAdvanceAt);
@@ -4080,7 +4192,10 @@
     }
 
     function guessTextHtml(guess, room, audience = state.role) {
-      const canReadText = audience !== "student" || guess.playerId === currentPlayerId() || room?.reveal || room?.status === "finished";
+      const canReadText = audience === "admin"
+        || (audience === "student" && guess.playerId === currentPlayerId())
+        || room?.reveal
+        || room?.status === "finished";
       if (canReadText) return `${escapeHtml(guess.text)}${guessResultText(guess)}`;
       if (guess.correct) {
         const rank = Number(guess.rank) || 0;
@@ -4089,11 +4204,12 @@
         const pointsText = points ? ` +${points}점` : "";
         return `<span class="private-answer">정답${rankText}${pointsText}</span>`;
       }
-      return '<span class="private-answer">답안 제출됨</span>';
+      if (guess.matched) return '<span class="private-answer">답안 확인 중</span>';
+      return escapeHtml(guess.text);
     }
 
     function guessActionsHtml(guess, room, audience = state.role) {
-      if (audience === "student" || room?.status !== "game" || guess.correct) return "";
+      if (audience !== "admin" || room?.status !== "game" || guess.correct) return "";
       if (correctRank(room, guess.playerId) >= 0) return "";
       const hint = guess.matched ? '<span class="seal-chip rank-chip">정답 후보</span>' : "";
       return `
@@ -4104,9 +4220,8 @@
       `;
     }
 
-    function chatListHtml(room, audience = state.role) {
-      if (!room?.guesses?.length) return '<div class="empty">아직 정답 입력이 없습니다.</div>';
-      return room.guesses.map((guess) => `
+    function chatItemsHtml(room, audience = state.role) {
+      return (room?.guesses || []).map((guess) => `
         <div class="chat-item${guess.correct ? " correct" : ""}">
           <div class="chat-top">
             <span class="chat-name">${escapeHtml(guess.name)}</span>
@@ -4116,6 +4231,12 @@
           ${guessActionsHtml(guess, room, audience)}
         </div>
       `).join("");
+    }
+
+    function chatListHtml(room, audience = state.role) {
+      return room?.guesses?.length
+        ? chatItemsHtml(room, audience)
+        : '<div class="empty">아직 정답 입력이 없습니다.</div>';
     }
 
     function revealedAnswerListHtml(room) {
@@ -4132,10 +4253,23 @@
       `).join("");
     }
 
+    function teacherAnswerFeedHtml(room) {
+      const liveGuesses = room?.status === "game" && !room.reveal ? chatItemsHtml(room, "teacher") : "";
+      const revealedAnswers = (room?.revealedAnswers || []).length ? revealedAnswerListHtml(room) : "";
+      if (!liveGuesses && !revealedAnswers) return '<div class="empty">아직 기록이 없습니다.</div>';
+      return `${liveGuesses}${revealedAnswers}`;
+    }
+
     function renderChat() {
       const room = state.room;
+      const chatPanel = document.querySelector("#gameScreen .chat-panel");
+      const showStudentFeed = state.role === "student"
+        && room?.status === "game"
+        && !isCurrentDrawer(room)
+        && Boolean(room?.guesses?.length);
+      chatPanel?.classList.toggle("has-student-feed", showStudentFeed);
       document.querySelector("#chatList").innerHTML = state.role === "teacher"
-        ? revealedAnswerListHtml(room)
+        ? teacherAnswerFeedHtml(room)
         : chatListHtml(room, state.role);
       const adminChat = document.querySelector("#adminChatList");
       if (adminChat) adminChat.innerHTML = chatListHtml(room, "admin");
