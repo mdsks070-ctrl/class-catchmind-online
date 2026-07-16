@@ -403,3 +403,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Eraser has a larger 8-64 size range, per-tool size memory, disabled color controls, and a visible cursor preview.
 - Drawing students can undo the latest stroke or clear the canvas; both operations sync through the room transaction and invalidate pending stale stroke writes.
 - Verified pen -> erase -> undo -> clear by canvas pixel checks, plus portrait and landscape toolbar geometry.
+## 2026-07-16 Student Wrong-Answer Panel Layout
+
+- Moved the live wrong-answer feed to a fixed right-side panel for guessing students on desktop and tablet screens.
+- Kept the answer input anchored below the feed and changed answer items to a vertical scrolling list.
+- Preserved the below-canvas layout on narrow portrait phones and the existing right-side layout on landscape phones.
+- Verified 1440x900, 768x1024, 844x390, and 390x844 layouts with no horizontal overflow or browser errors.

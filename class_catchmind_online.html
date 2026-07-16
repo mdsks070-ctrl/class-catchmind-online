@@ -1735,6 +1735,85 @@
       }
     }
 
+    @media (min-width: 721px) and (min-height: 561px) {
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .game-screen {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 330px);
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+          "status status"
+          "canvas chat";
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel {
+        display: grid;
+        height: 100%;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 0;
+        border: 2px solid #8b6a3e;
+        border-radius: 14px;
+        background: #efe0c6;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-head {
+        display: block;
+        padding: 10px 12px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed {
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 0;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel.has-student-feed .panel-body {
+        display: block;
+        max-height: none;
+        padding: 9px;
+        border: 0;
+        border-radius: 0;
+        overflow-y: auto;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-list {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .chat-item {
+        width: auto;
+        min-width: 0;
+        padding: 8px 10px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .chat-panel .panel-foot {
+        width: auto;
+        padding: 9px;
+        border: 0;
+        border-top: 2px solid #b9905e;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form {
+        grid-template-columns: minmax(0, 1fr) 84px;
+        gap: 8px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput,
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) .answer-form .small-btn {
+        min-height: 64px;
+      }
+
+      body[data-role="student"][data-status="game"]:not(.is-current-drawer) #answerInput {
+        padding: 0 12px;
+        font-size: 18px;
+      }
+    }
+
     @media (max-width: 940px) and (max-height: 560px) and (orientation: landscape) {
       body {
         overflow: auto;
