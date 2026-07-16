@@ -397,3 +397,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Correct or matched submissions stay masked as rank/status messages until the shared answer reveal begins.
 - The teacher feed combines live wrong guesses with previously revealed prompt history; the admin window still shows raw submissions and manual scoring controls.
 - The drawing student keeps the full drawing layout without the answer feed.
+## 2026-07-16 Eraser And Drawing Recovery Tools
+
+- Replaced single-letter-only drawing tools with explicit pen, highlighter, and eraser labels.
+- Eraser has a larger 8-64 size range, per-tool size memory, disabled color controls, and a visible cursor preview.
+- Drawing students can undo the latest stroke or clear the canvas; both operations sync through the room transaction and invalidate pending stale stroke writes.
+- Verified pen -> erase -> undo -> clear by canvas pixel checks, plus portrait and landscape toolbar geometry.

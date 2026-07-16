@@ -979,6 +979,28 @@
       touch-action: none;
     }
 
+    canvas.eraser-active {
+      cursor: none;
+    }
+
+    .eraser-preview {
+      position: absolute;
+      z-index: 6;
+      display: none;
+      width: 24px;
+      height: 24px;
+      border: 2px solid #12613f;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .62);
+      box-shadow: 0 2px 8px rgba(34, 25, 12, .22);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .eraser-preview.show {
+      display: block;
+    }
+
     .drawer-banner {
       position: absolute;
       top: 12px;
@@ -1037,7 +1059,7 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) 168px;
+      grid-template-columns: auto minmax(120px, 1fr) 168px auto;
       gap: 10px;
       align-items: center;
       padding: 10px 12px;
@@ -1046,26 +1068,70 @@
     }
 
     .tools,
-    .colors {
+    .colors,
+    .drawing-actions {
       display: flex;
       align-items: center;
       gap: 7px;
       min-width: 0;
     }
 
+    .colors {
+      padding: 2px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .colors.is-disabled {
+      opacity: .42;
+    }
+
+    .drawing-actions {
+      justify-content: flex-end;
+    }
+
     .tool-btn {
-      display: grid;
-      width: 42px;
+      display: inline-flex;
+      width: auto;
+      min-width: 58px;
       min-height: 42px;
-      place-items: center;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 9px;
       border-radius: 12px;
       box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12);
+      font-size: 13px;
       font-weight: 950;
+      white-space: nowrap;
     }
 
     .tool-btn.active {
       background: var(--blue);
       color: #fff;
+    }
+
+    .tool-key {
+      display: grid;
+      min-width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .66);
+      color: #4d3b24;
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .tool-btn.active .tool-key {
+      background: rgba(255, 255, 255, .88);
+      color: #205b88;
+    }
+
+    .drawing-action-btn {
+      min-height: 42px;
+      padding: 7px 10px;
+      white-space: nowrap;
     }
 
     .swatch {
@@ -1642,8 +1708,17 @@
       }
 
       .colors,
-      .tools {
+      .tools,
+      .drawing-actions {
         flex-wrap: wrap;
+      }
+
+      .drawing-actions {
+        justify-content: stretch;
+      }
+
+      .drawing-actions .drawing-action-btn {
+        flex: 1 1 120px;
       }
 
       .qr-card {
@@ -1817,6 +1892,40 @@
 
       body[data-role="student"][data-status="game"]:not(.is-current-drawer) .draw-top {
         display: none;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .draw-top {
+        display: none;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .draw-panel {
+        height: 100%;
+        grid-template-rows: minmax(0, 1fr) 50px;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .canvas-wrap {
+        grid-row: 1;
+        height: auto;
+        min-height: 0;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .toolbar {
+        grid-row: 2;
+        gap: 6px;
+        min-height: 50px;
+        padding: 5px 7px;
+        overflow: hidden;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .tool-btn,
+      body[data-role="student"][data-status="game"].is-current-drawer .drawing-action-btn {
+        min-height: 36px;
+        padding: 4px 7px;
+      }
+
+      body[data-role="student"][data-status="game"].is-current-drawer .swatch {
+        width: 26px;
+        height: 26px;
       }
 
       .canvas-lock {
@@ -2162,17 +2271,22 @@
           <canvas id="drawCanvas" width="1400" height="900"></canvas>
           <div class="drawer-banner" id="drawerBanner"></div>
           <div class="canvas-lock" id="canvasLock">학생 화면에서는 그림을 볼 수만 있습니다.</div>
+          <div class="eraser-preview" id="eraserPreview" aria-hidden="true"></div>
         </div>
         <div class="toolbar" id="toolbar">
           <div class="tools">
-            <button class="tool-btn active" data-tool="pen" title="펜">P</button>
-            <button class="tool-btn" data-tool="marker" title="마커">M</button>
-            <button class="tool-btn" data-tool="eraser" title="지우개">E</button>
+            <button class="tool-btn active" data-tool="pen" title="펜"><span class="tool-key" aria-hidden="true">P</span><span>펜</span></button>
+            <button class="tool-btn" data-tool="marker" title="형광펜"><span class="tool-key" aria-hidden="true">M</span><span>형광펜</span></button>
+            <button class="tool-btn" data-tool="eraser" title="지우개"><span class="tool-key" aria-hidden="true">E</span><span>지우개</span></button>
           </div>
           <div class="colors" id="colorBar"></div>
           <div class="size-row">
-            <input id="sizeRange" type="range" min="3" max="36" value="9">
+            <input id="sizeRange" type="range" min="3" max="36" value="9" aria-label="선 굵기">
             <output class="size-value" id="sizeValue">9</output>
+          </div>
+          <div class="drawing-actions">
+            <button class="small-btn drawing-action-btn" id="drawerUndoBtn" type="button">되돌리기</button>
+            <button class="small-btn danger drawing-action-btn" id="drawerClearBtn" type="button">전체 지우기</button>
           </div>
         </div>
       </section>
@@ -2339,6 +2453,7 @@
       tool: "pen",
       color: palette[0],
       size: 9,
+      toolSizes: { pen: 9, marker: 12, eraser: 28 },
       drawing: false,
       inputMode: null,
       currentStroke: null,
@@ -3612,11 +3727,53 @@
       if (message) showToast(message);
     }
 
-    async function clearCanvasForRoom() {
+    function canEditCanvas(room) {
+      return Boolean(room?.status === "game" && (
+        state.role === "teacher"
+        || state.role === "admin"
+        || room.drawerId === currentPlayerId()
+      ));
+    }
+
+    async function undoLastStrokeForRoom() {
+      let removed = false;
+      let message = "";
       await transactRoom((room) => {
+        if (!canEditCanvas(room)) {
+          message = "현재 그리는 학생만 되돌릴 수 있습니다.";
+          return false;
+        }
+        if (!room.strokes.length) {
+          message = "되돌릴 그림이 없습니다.";
+          return false;
+        }
+        room.strokes.pop();
+        room.clearId += 1;
+        removed = true;
+      }, "undo stroke");
+      if (removed) {
+        showToast("마지막 획을 되돌렸습니다.");
+      } else if (message) {
+        showToast(message);
+      }
+    }
+
+    async function clearCanvasForRoom() {
+      let cleared = false;
+      let message = "";
+      await transactRoom((room) => {
+        if (!canEditCanvas(room)) {
+          message = "현재 그리는 학생만 그림판을 지울 수 있습니다.";
+          return false;
+        }
         room.clearId += 1;
         room.strokes = [];
+        cleared = true;
       }, "clear canvas");
+      if (!cleared) {
+        if (message) showToast(message);
+        return;
+      }
       resetCanvas();
       showToast("그림판을 비웠습니다.");
     }
@@ -3802,6 +3959,12 @@
       state.lastStrokeId = "";
     }
 
+    function strokeWidth(stroke) {
+      if (stroke?.tool === "marker") return Number(stroke.size) * 2.2;
+      if (stroke?.tool === "eraser") return Number(stroke.size) * 2.4;
+      return Number(stroke?.size) || 1;
+    }
+
     function drawStroke(stroke) {
       if (!stroke?.points?.length) return;
       ctx.save();
@@ -3810,7 +3973,7 @@
       ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
       ctx.globalAlpha = stroke.tool === "marker" ? .24 : 1;
       ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.tool === "marker" ? stroke.size * 2.2 : stroke.size;
+      ctx.lineWidth = strokeWidth(stroke);
       if (stroke.points.length === 1) {
         ctx.fillStyle = stroke.color;
         ctx.beginPath();
@@ -3852,6 +4015,25 @@
         x: (event.clientX - rect.left) * canvas.width / rect.width,
         y: (event.clientY - rect.top) * canvas.height / rect.height
       };
+    }
+
+    function hideEraserPreview() {
+      document.querySelector("#eraserPreview")?.classList.remove("show");
+    }
+
+    function updateEraserPreview(event) {
+      const preview = document.querySelector("#eraserPreview");
+      if (!preview || state.tool !== "eraser" || !canDraw(state.room) || event.pointerType === "touch") {
+        hideEraserPreview();
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const diameter = Math.max(14, strokeWidth({ tool: "eraser", size: state.size }) * rect.width / canvas.width);
+      preview.style.width = `${diameter}px`;
+      preview.style.height = `${diameter}px`;
+      preview.style.left = `${event.clientX - rect.left}px`;
+      preview.style.top = `${event.clientY - rect.top}px`;
+      preview.classList.add("show");
     }
 
     function queueStroke(stroke) {
@@ -4030,6 +4212,9 @@
           : "라운드가 시작되면 그리는 학생만 그림을 그릴 수 있습니다.";
       canvasLock.classList.toggle("show", !drawAllowed);
       document.querySelector("#toolbar").style.display = drawAllowed ? "grid" : "none";
+      document.querySelector("#drawerUndoBtn").disabled = !drawAllowed || !room.strokes.length;
+      document.querySelector("#drawerClearBtn").disabled = !drawAllowed || !room.strokes.length;
+      if (!drawAllowed) hideEraserPreview();
       document.querySelector("#teacherControls").style.display = state.role === "teacher" ? "grid" : "none";
       document.querySelector("#studentNotice").style.display = state.role === "student" ? "block" : "none";
       const answerFormVisible = state.role === "student" && room.status === "game" && !currentIsDrawer;
@@ -4498,11 +4683,14 @@
     function renderColors() {
       const bar = document.querySelector("#colorBar");
       bar.innerHTML = "";
+      const disabled = state.tool === "eraser";
+      bar.classList.toggle("is-disabled", disabled);
       palette.forEach((color) => {
         const button = document.createElement("button");
         button.className = `swatch${color === state.color ? " active" : ""}`;
         button.style.background = color;
         button.title = color;
+        button.disabled = disabled;
         button.addEventListener("click", () => {
           state.color = color;
           renderColors();
@@ -4511,11 +4699,27 @@
       });
     }
 
+    function updateSizeControl() {
+      const range = document.querySelector("#sizeRange");
+      const isEraser = state.tool === "eraser";
+      range.min = isEraser ? "8" : "3";
+      range.max = isEraser ? "64" : "36";
+      range.value = String(state.size);
+      range.setAttribute("aria-label", isEraser ? "지우개 크기" : "선 굵기");
+      document.querySelector("#sizeValue").textContent = String(state.size);
+    }
+
     function setTool(tool) {
+      if (!Object.prototype.hasOwnProperty.call(state.toolSizes, tool)) return;
       state.tool = tool;
+      state.size = state.toolSizes[tool];
       document.querySelectorAll("[data-tool]").forEach((button) => {
         button.classList.toggle("active", button.dataset.tool === tool);
       });
+      canvas.classList.toggle("eraser-active", tool === "eraser");
+      hideEraserPreview();
+      renderColors();
+      updateSizeControl();
     }
 
     document.querySelector("#goTeacherBtn").addEventListener("click", () => navigateNormal("teacher"));
@@ -4529,6 +4733,8 @@
     document.querySelector("#revealAnswerBtn").addEventListener("click", revealAnswer);
     document.querySelector("#changeDrawerBtn").addEventListener("click", changeDrawerForRoom);
     document.querySelector("#clearCanvasBtn").addEventListener("click", clearCanvasForRoom);
+    document.querySelector("#drawerUndoBtn").addEventListener("click", undoLastStrokeForRoom);
+    document.querySelector("#drawerClearBtn").addEventListener("click", clearCanvasForRoom);
     document.querySelector("#adminNextRoundBtn").addEventListener("click", nextRound);
     document.querySelector("#adminRevealBtn").addEventListener("click", revealAnswer);
     document.querySelector("#backLobbyBtn").addEventListener("click", backToLobby);
@@ -4558,20 +4764,24 @@
     });
     document.querySelector("#sizeRange").addEventListener("input", (event) => {
       state.size = Number(event.target.value);
+      state.toolSizes[state.tool] = state.size;
       document.querySelector("#sizeValue").textContent = String(state.size);
     });
     document.querySelectorAll("[data-tool]").forEach((button) => button.addEventListener("click", () => setTool(button.dataset.tool)));
     canvas.addEventListener("pointerdown", startDraw);
     canvas.addEventListener("pointermove", moveDraw);
+    canvas.addEventListener("pointermove", updateEraserPreview);
     canvas.addEventListener("pointerup", endDraw);
     canvas.addEventListener("pointercancel", endDraw);
     canvas.addEventListener("mousedown", startDraw);
     canvas.addEventListener("mousemove", moveDraw);
+    canvas.addEventListener("mousemove", updateEraserPreview);
     window.addEventListener("mouseup", endDraw);
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !document.querySelector("#qrModal").hidden) closeQrModal();
     });
     canvas.addEventListener("pointerleave", (event) => {
+      hideEraserPreview();
       if (state.drawing && event.buttons === 0) endDraw(event);
     });
     window.addEventListener("storage", (event) => {
@@ -4592,7 +4802,7 @@
     });
 
     resetCanvas();
-    renderColors();
+    setTool(state.tool);
     restoreStudentIdentity();
     hydrateFromUrl();
   </script>
