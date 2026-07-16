@@ -409,3 +409,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Kept the answer input anchored below the feed and changed answer items to a vertical scrolling list.
 - Preserved the below-canvas layout on narrow portrait phones and the existing right-side layout on landscape phones.
 - Verified 1440x900, 768x1024, 844x390, and 390x844 layouts with no horizontal overflow or browser errors.
+## 2026-07-16 Answer Reveal And Role Clarity
+
+- Added a full-screen five-second answer reveal with a large word and next-round countdown.
+- Enlarged the in-game teacher entry code and widened the answer log on teacher and guessing-student layouts.
+- Replaced ambiguous role labels with explicit teacher, drawing-student, and guessing-student actions.
+- Verified the reveal-to-next-round transition, role-specific controls, 1440x900 desktop geometry, and 390x844 mobile overlay geometry.
+- Kept student identity as grade, class, and number; free-form names remain intentionally undecided.
