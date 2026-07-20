@@ -429,3 +429,8 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Cumulative standings use shared ranks for tied scores and support the full 24-student roster in responsive multi-column layouts.
 - UI test rooms now use the production 24-round limit and include two sample correct students for answer-ranking previews.
 - Verified answer ranking order, round-five standings, tied ranks, automatic transition to round six, and 390x844 mobile answer-overlay geometry.
+## 2026-07-20 Extended Test Rounds And Words
+
+- Kept the UI test game at 24 rounds and expanded its sample word pool from 6 to 24 unique words, preventing early repeats.
+- Replaced the 8- and 12-round room presets with 10, 15, and 20-round milestone-aligned choices.
+- Round option labels now state how many intermediate standings screens will appear before the final result.
