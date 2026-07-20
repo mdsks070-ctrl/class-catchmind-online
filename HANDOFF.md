@@ -416,3 +416,9 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Replaced ambiguous role labels with explicit teacher, drawing-student, and guessing-student actions.
 - Verified the reveal-to-next-round transition, role-specific controls, 1440x900 desktop geometry, and 390x844 mobile overlay geometry.
 - Kept student identity as grade, class, and number; free-form names remain intentionally undecided.
+## 2026-07-20 White Eraser Rendering
+
+- Changed the canvas CSS background from warm cream to pure white.
+- Eraser strokes now paint pure white instead of making pixels transparent and exposing the cream layer below.
+- Verified on the seeded banana drawing that erasing leaves white pixels visually and undo restores the original drawing.
+- Browser console remained free of errors during the draw and undo test.
