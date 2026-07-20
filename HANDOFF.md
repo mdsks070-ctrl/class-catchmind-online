@@ -434,3 +434,16 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Kept the UI test game at 24 rounds and expanded its sample word pool from 6 to 24 unique words, preventing early repeats.
 - Replaced the 8- and 12-round room presets with 10, 15, and 20-round milestone-aligned choices.
 - Round option labels now state how many intermediate standings screens will appear before the final result.
+
+## 2026-07-20 Full Gameplay And Usability QA
+
+- Disabled answer entry immediately after a student scores in the current round and replaced the placeholder with a clear waiting message.
+- Fixed teacher layouts below 1120px so the status board, canvas, and answer log stack instead of squeezing into implicit grid columns.
+- Kept the guessing student's answer dock fixed and reachable on portrait phones while preserving the canvas/right-panel layout in landscape.
+- Activated the displayed P/M/E drawing shortcuts and verified pen, marker, and eraser switching after role or tool buttons retain focus.
+- Added a synchronized final standings screen for every participant, including all tied ranks and a teacher/admin return-to-lobby control.
+- Made 24-player standings internally scroll on short landscape screens and kept the admin window open when it resets the room to the lobby.
+- Ran a real Firebase multi-tab game with teacher, three students, and admin: drawing sync, wrong-answer visibility, rank scoring, both five-second phases, automatic rounds, final results, moderation seals, and room reset all passed.
+- Verified an assigned drawer can disconnect and rejoin with the same class/number, preserving score, prompt, drawing role, and existing strokes.
+- Filled the temporary room to 24 identities: a 25th identity was rejected, while an existing identity could reconnect after the room was full.
+- Rechecked 844x390 and 390x844 role layouts with no horizontal overflow, browser warnings, or console errors. The temporary Firebase room was removed after the run.
