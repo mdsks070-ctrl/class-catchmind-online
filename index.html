@@ -470,8 +470,9 @@
     .answer-reveal-content {
       display: grid;
       width: min(1040px, 100%);
+      max-height: calc(100vh - 48px);
       justify-items: center;
-      gap: 18px;
+      gap: 14px;
       text-align: center;
       animation: answer-reveal-in .28s ease-out both;
     }
@@ -504,6 +505,138 @@
       color: #dceac6;
       font-size: 20px;
       font-weight: 900;
+    }
+
+    .answer-reveal-winners,
+    .score-standings-list {
+      display: grid;
+      width: min(1000px, 100%);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      align-content: center;
+    }
+
+    .reveal-ranking-item {
+      display: grid;
+      min-width: 0;
+      min-height: 36px;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      gap: 5px;
+      align-items: center;
+      padding: 5px 7px;
+      border: 1px solid rgba(255, 247, 221, .28);
+      border-radius: 8px;
+      background: rgba(255, 247, 221, .09);
+      text-align: left;
+    }
+
+    .reveal-ranking-item.top-three {
+      border-color: rgba(255, 225, 137, .66);
+      background: rgba(255, 225, 137, .16);
+    }
+
+    .reveal-ranking-rank {
+      color: #ffe189;
+      font-size: 13px;
+      font-weight: 950;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .reveal-ranking-name {
+      overflow: hidden;
+      color: #fff7dd;
+      font-size: 13px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reveal-ranking-score {
+      color: #dceac6;
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .reveal-ranking-empty {
+      grid-column: 1 / -1;
+      padding: 12px;
+      border: 1px dashed rgba(255, 247, 221, .36);
+      border-radius: 8px;
+      color: #dceac6;
+      font-size: 15px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .standings-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 56;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #202b31;
+      color: #f7fbfc;
+      pointer-events: none;
+    }
+
+    body.reveal-overlay-open {
+      overflow: hidden !important;
+    }
+
+    .standings-overlay[hidden] {
+      display: none !important;
+    }
+
+    .standings-content {
+      display: grid;
+      width: min(1100px, 100%);
+      max-height: calc(100vh - 48px);
+      justify-items: center;
+      gap: 14px;
+      animation: answer-reveal-in .28s ease-out both;
+    }
+
+    .standings-kicker {
+      color: #9ed9c5;
+      font-size: 20px;
+      font-weight: 950;
+    }
+
+    .standings-title {
+      margin: 0;
+      color: #ffe189;
+      font-size: 46px;
+      font-weight: 950;
+      letter-spacing: 0;
+      line-height: 1.05;
+    }
+
+    .standings-countdown {
+      margin: 0;
+      color: #c9d9de;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .standings-overlay .reveal-ranking-item {
+      border-color: rgba(201, 217, 222, .25);
+      background: rgba(255, 255, 255, .07);
+    }
+
+    .standings-overlay .reveal-ranking-item.top-three {
+      border-color: rgba(255, 225, 137, .62);
+      background: rgba(255, 225, 137, .13);
+    }
+
+    .standings-overlay .reveal-ranking-name {
+      color: #f7fbfc;
+    }
+
+    .standings-overlay .reveal-ranking-score {
+      color: #9ed9c5;
     }
 
     @keyframes answer-reveal-in {
@@ -1629,12 +1762,26 @@
 
     @media (min-width: 1121px) {
       .answer-reveal-word {
-        font-size: 136px;
+        font-size: 112px;
       }
 
       .answer-reveal-kicker,
       .answer-reveal-countdown {
         font-size: 24px;
+      }
+
+      .answer-reveal-winners,
+      .score-standings-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .reveal-ranking-item {
+        min-height: 42px;
+        padding: 7px 9px;
+      }
+
+      .standings-title {
+        font-size: 58px;
       }
 
       body.is-test-mode .page {
@@ -1800,6 +1947,10 @@
         padding: 18px;
       }
 
+      .standings-overlay {
+        padding: 16px;
+      }
+
       .answer-reveal-word {
         font-size: 64px;
       }
@@ -1807,6 +1958,34 @@
       .answer-reveal-kicker,
       .answer-reveal-countdown {
         font-size: 18px;
+      }
+
+      .answer-reveal-content,
+      .standings-content {
+        gap: 10px;
+        max-height: calc(100vh - 32px);
+      }
+
+      .reveal-ranking-item {
+        grid-template-columns: 28px minmax(0, 1fr) auto;
+        gap: 3px;
+        min-height: 32px;
+        padding: 4px 5px;
+      }
+
+      .reveal-ranking-rank,
+      .reveal-ranking-name,
+      .reveal-ranking-score {
+        font-size: 11px;
+      }
+
+      .standings-kicker,
+      .standings-countdown {
+        font-size: 15px;
+      }
+
+      .standings-title {
+        font-size: 38px;
       }
 
       .page {
@@ -1861,6 +2040,11 @@
     @media (min-width: 721px) and (max-width: 1120px) {
       .answer-reveal-word {
         font-size: 96px;
+      }
+
+      .answer-reveal-winners,
+      .score-standings-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -2566,7 +2750,17 @@
     <div class="answer-reveal-content">
       <span class="answer-reveal-kicker">정답 공개</span>
       <strong class="answer-reveal-word" id="answerRevealWord">정답</strong>
+      <div class="answer-reveal-winners" id="answerRevealWinners"></div>
       <p class="answer-reveal-countdown" id="answerRevealCountdown">잠시 후 다음 문제로 넘어갑니다.</p>
+    </div>
+  </div>
+
+  <div class="standings-overlay" id="standingsOverlay" role="status" aria-live="assertive" hidden>
+    <div class="standings-content">
+      <span class="standings-kicker" id="standingsKicker">5라운드 현재 순위</span>
+      <h2 class="standings-title">현재 점수 순위</h2>
+      <div class="score-standings-list" id="scoreStandingsList"></div>
+      <p class="standings-countdown" id="standingsCountdown">잠시 후 다음 문제로 넘어갑니다.</p>
     </div>
   </div>
 
@@ -2624,6 +2818,7 @@
     const rankScores = [100, 90, 80, 70, 60, 50];
     const autoAdvanceDelayMs = 5000;
     const answerRevealDelayMs = 5000;
+    const standingsRevealDelayMs = 7000;
     const maxPlayers = 24;
     const remotePollMs = 6000;
     const remoteSilenceBeforePollMs = 9000;
@@ -2681,6 +2876,7 @@
       lastSoundKey: "",
       roundAdvanceBusy: false,
       autoRevealBusy: false,
+      standingsBusy: false,
       remotePollBusy: false,
       presenceBusy: false,
       presenceKey: "",
@@ -2948,7 +3144,10 @@
       });
       if (name !== "game" && name !== "admin") {
         const answerOverlay = document.querySelector("#answerRevealOverlay");
+        const standingsOverlay = document.querySelector("#standingsOverlay");
         if (answerOverlay) answerOverlay.hidden = true;
+        if (standingsOverlay) standingsOverlay.hidden = true;
+        document.body.classList.remove("reveal-overlay-open");
       }
     }
 
@@ -3472,6 +3671,7 @@
       const drawer = uiTestPlayer(3, 12, 0, now, { joinOffset: 90000 });
       const guesser = uiTestPlayer(3, 13, 0, now, { joinOffset: 82000 });
       const correct = uiTestPlayer(3, 14, 100, now, { joinOffset: 76000 });
+      const runnerUp = uiTestPlayer(3, 15, 90, now, { joinOffset: 70000 });
       return {
         code: uiTestRoomCode,
         teacherId: `test-teacher-${state.clientId}`,
@@ -3479,7 +3679,7 @@
         maxPlayers,
         duration: 180,
         answerMode: "auto",
-        roundLimit: 3,
+        roundLimit: 24,
         soundOn: false,
         words: ["바나나", "학교", "우산", "고양이", "우주선", "축구공"],
         used: ["바나나"],
@@ -3517,14 +3717,27 @@
             points: 0,
             rank: null,
             at: now - 17000
+          },
+          {
+            id: "test-guess-correct-second",
+            playerId: runnerUp.id,
+            name: runnerUp.name,
+            text: "바나나",
+            matched: true,
+            correct: true,
+            points: 90,
+            rank: 2,
+            acceptedAt: now - 9000,
+            at: now - 9000
           }
         ],
         revealedAnswers: [],
-        roundWinners: [correct.id],
+        roundWinners: [correct.id, runnerUp.id],
         players: {
           [drawer.id]: drawer,
           [guesser.id]: guesser,
-          [correct.id]: correct
+          [correct.id]: correct,
+          [runnerUp.id]: runnerUp
         },
         createdAt: now - 90000,
         revision: 1,
@@ -4028,6 +4241,37 @@
       }
     }
 
+    function shouldShowStandings(room) {
+      const round = Number(room?.round) || 0;
+      const roundLimit = Number(room?.roundLimit) || 0;
+      return round > 0 && round % 5 === 0 && round < roundLimit;
+    }
+
+    async function advanceAfterAnswerReveal() {
+      const room = readRoom();
+      if (!shouldShowStandings(room)) {
+        nextRound();
+        return;
+      }
+      if (state.standingsBusy) return;
+      state.standingsBusy = true;
+      try {
+        await transactRoom((draft) => {
+          if (
+            draft.status !== "game"
+            || draft.autoAdvanceReason !== "answer"
+            || !draft.autoAdvanceAt
+            || draft.autoAdvanceAt > Date.now()
+            || !shouldShowStandings(draft)
+          ) return false;
+          draft.autoAdvanceAt = Date.now() + standingsRevealDelayMs;
+          draft.autoAdvanceReason = "standings";
+        }, "standings reveal");
+      } finally {
+        state.standingsBusy = false;
+      }
+    }
+
     function acceptGuessForScore(room, guess) {
       if (!room || !guess) return { ok: false, message: "정답 기록을 찾을 수 없습니다." };
       const player = room.players?.[guess.playerId];
@@ -4521,25 +4765,86 @@
         : "대기 중";
     }
 
+    function roundWinnerEntries(room) {
+      return (room?.roundWinners || []).map((playerId, index) => {
+        const player = room.players?.[playerId];
+        const guess = (room.guesses || []).find((item) => item.playerId === playerId && item.correct);
+        return {
+          rank: index + 1,
+          name: player?.name || guess?.name || "학생",
+          score: Number(guess?.points) || scoreForRank(index)
+        };
+      });
+    }
+
+    function scoreStandingEntries(room) {
+      let previousScore = null;
+      let currentRank = 0;
+      return roomPlayers(room).map((player, index) => {
+        const score = Number(player.score) || 0;
+        if (score !== previousScore) {
+          currentRank = index + 1;
+          previousScore = score;
+        }
+        return { rank: currentRank, name: player.name, score };
+      });
+    }
+
+    function revealRankingItemsHtml(entries, scorePrefix = "") {
+      if (!entries.length) return '<div class="reveal-ranking-empty">이번 문제 정답자가 없습니다.</div>';
+      return entries.map((entry) => `
+        <div class="reveal-ranking-item${entry.rank <= 3 ? " top-three" : ""}">
+          <span class="reveal-ranking-rank">${entry.rank}위</span>
+          <strong class="reveal-ranking-name">${escapeHtml(entry.name)}</strong>
+          <span class="reveal-ranking-score">${scorePrefix}${entry.score}점</span>
+        </div>
+      `).join("");
+    }
+
     function renderAnswerReveal(room) {
       const overlay = document.querySelector("#answerRevealOverlay");
       const word = currentWord(room);
-      const active = Boolean(room?.status === "game" && room.reveal && word);
+      const active = Boolean(room?.status === "game" && room.reveal && room.autoAdvanceReason === "answer" && word);
       overlay.hidden = !active;
       overlay.setAttribute("aria-hidden", String(!active));
-      if (!active) return;
+      if (!active) return false;
       const nextIn = room.autoAdvanceAt
         ? Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000))
         : 0;
       document.querySelector("#answerRevealWord").textContent = word;
+      document.querySelector("#answerRevealWinners").innerHTML = revealRankingItemsHtml(roundWinnerEntries(room), "+");
       document.querySelector("#answerRevealCountdown").textContent = nextIn
+        ? shouldShowStandings(room)
+          ? `${nextIn}초 후 현재 점수 순위를 공개합니다.`
+          : `${nextIn}초 후 다음 문제로 넘어갑니다.`
+        : shouldShowStandings(room)
+          ? "현재 점수 순위를 공개합니다."
+          : "다음 문제로 넘어갑니다.";
+      return true;
+    }
+
+    function renderStandingsReveal(room) {
+      const overlay = document.querySelector("#standingsOverlay");
+      const active = Boolean(room?.status === "game" && room.autoAdvanceReason === "standings");
+      overlay.hidden = !active;
+      overlay.setAttribute("aria-hidden", String(!active));
+      if (!active) return false;
+      const nextIn = room.autoAdvanceAt
+        ? Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000))
+        : 0;
+      document.querySelector("#standingsKicker").textContent = `${room.round}라운드 현재 순위`;
+      document.querySelector("#scoreStandingsList").innerHTML = revealRankingItemsHtml(scoreStandingEntries(room));
+      document.querySelector("#standingsCountdown").textContent = nextIn
         ? `${nextIn}초 후 다음 문제로 넘어갑니다.`
         : "다음 문제로 넘어갑니다.";
+      return true;
     }
 
     function renderTimer() {
       const room = state.room;
-      renderAnswerReveal(room);
+      const answerOverlayActive = renderAnswerReveal(room);
+      const standingsOverlayActive = renderStandingsReveal(room);
+      document.body.classList.toggle("reveal-overlay-open", Boolean(answerOverlayActive || standingsOverlayActive));
       if (!room) return;
       if (room.status === "finished") {
         document.querySelector("#timerText").textContent = "끝";
@@ -4578,30 +4883,49 @@
       if (room.status === "game" && room.autoAdvanceAt) {
         const nextIn = Math.max(0, Math.ceil((room.autoAdvanceAt - Date.now()) / 1000));
         const isAnswerReveal = room.autoAdvanceReason === "answer";
-        const countdownMax = Math.max(1, Math.ceil((isAnswerReveal ? answerRevealDelayMs : autoAdvanceDelayMs) / 1000));
+        const isStandingsReveal = room.autoAdvanceReason === "standings";
+        const countdownDuration = isStandingsReveal
+          ? standingsRevealDelayMs
+          : isAnswerReveal
+            ? answerRevealDelayMs
+            : autoAdvanceDelayMs;
+        const countdownMax = Math.max(1, Math.ceil(countdownDuration / 1000));
         const countdownDeg = Math.max(0, Math.min(1, nextIn / countdownMax)) * 360;
-        document.querySelector("#timerTitle").textContent = isAnswerReveal ? "정답 공개" : room.autoAdvanceReason === "correct" ? "1등 정답" : "다음 문제 준비";
+        document.querySelector("#timerTitle").textContent = isStandingsReveal
+          ? "현재 점수 순위"
+          : isAnswerReveal
+            ? "정답 공개"
+            : room.autoAdvanceReason === "correct"
+              ? "1등 정답"
+              : "다음 문제 준비";
         document.querySelector("#timerText").textContent = String(nextIn);
         if (drawMeta) {
-          drawMeta.textContent = isAnswerReveal
-            ? `정답 공개 · ${nextIn}초 뒤 다음 문제`
-            : room.autoAdvanceReason === "correct"
-            ? `1등 정답 · ${nextIn}초 뒤 다음 문제`
-            : `${nextIn}초 뒤 다음 문제`;
+          drawMeta.textContent = isStandingsReveal
+            ? `현재 점수 순위 · ${nextIn}초 뒤 다음 문제`
+            : isAnswerReveal
+              ? `정답 공개 · ${nextIn}초 뒤 ${shouldShowStandings(room) ? "중간 순위" : "다음 문제"}`
+              : room.autoAdvanceReason === "correct"
+                ? `1등 정답 · ${nextIn}초 뒤 정답 공개`
+                : `${nextIn}초 뒤 정답 공개`;
         }
         circle.style.setProperty("--timer-deg", `${countdownDeg}deg`);
         circle.style.background = `conic-gradient(var(--blue) var(--timer-deg), #e6d7b5 0)`;
         document.querySelector("#timerSub").textContent = nextIn
-          ? isAnswerReveal
-            ? `정답: ${currentWord(room) || "확인 중"} · ${nextIn}초 후 다음 문제로 넘어갑니다.`
-            : room.autoAdvanceReason === "correct"
-            ? `${nextIn}초 안에 더 맞히면 순위 점수를 받을 수 있습니다. 정답은 공개하지 않습니다.`
-            : `${nextIn}초 후 다음 문제로 넘어갑니다.`
-          : isAnswerReveal
+          ? isStandingsReveal
+            ? `${nextIn}초 후 다음 문제로 넘어갑니다.`
+            : isAnswerReveal
+              ? `정답: ${currentWord(room) || "확인 중"} · ${nextIn}초 후 ${shouldShowStandings(room) ? "현재 점수 순위를 공개합니다." : "다음 문제로 넘어갑니다."}`
+              : room.autoAdvanceReason === "correct"
+                ? `${nextIn}초 안에 더 맞히면 순위 점수를 받을 수 있습니다. 정답은 공개하지 않습니다.`
+                : `${nextIn}초 후 정답을 공개합니다.`
+          : isStandingsReveal
             ? "다음 문제로 넘어갑니다."
-            : "정답을 공개합니다.";
+            : isAnswerReveal
+              ? shouldShowStandings(room) ? "현재 점수 순위를 공개합니다." : "다음 문제로 넘어갑니다."
+              : "정답을 공개합니다.";
         if (nextIn <= 0) {
-          if (isAnswerReveal) nextRound();
+          if (isStandingsReveal) nextRound();
+          else if (isAnswerReveal) advanceAfterAnswerReveal();
           else revealAnswerBeforeAdvance();
         }
         return;
