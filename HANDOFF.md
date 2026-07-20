@@ -422,3 +422,10 @@ http://127.0.0.1:8765/class_catchmind_online.html
 - Eraser strokes now paint pure white instead of making pixels transparent and exposing the cream layer below.
 - Verified on the seeded banana drawing that erasing leaves white pixels visually and undo restores the original drawing.
 - Browser console remained free of errors during the draw and undo test.
+## 2026-07-20 Round Winners And Five-Round Standings
+
+- The full-screen answer reveal now lists every correct student in answer order with awarded points.
+- After rounds 5, 10, 15, and 20, a synchronized seven-second cumulative score standings overlay appears before the next round.
+- Cumulative standings use shared ranks for tied scores and support the full 24-student roster in responsive multi-column layouts.
+- UI test rooms now use the production 24-round limit and include two sample correct students for answer-ranking previews.
+- Verified answer ranking order, round-five standings, tied ranks, automatic transition to round six, and 390x844 mobile answer-overlay geometry.
