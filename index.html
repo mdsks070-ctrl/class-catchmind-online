@@ -1067,7 +1067,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      background: #fffaf1;
+      background: #ffffff;
       cursor: crosshair;
       touch-action: none;
     }
@@ -4190,12 +4190,13 @@
       ctx.save();
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+      const strokeColor = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
+      ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = stroke.tool === "marker" ? .24 : 1;
-      ctx.strokeStyle = stroke.color;
+      ctx.strokeStyle = strokeColor;
       ctx.lineWidth = strokeWidth(stroke);
       if (stroke.points.length === 1) {
-        ctx.fillStyle = stroke.color;
+        ctx.fillStyle = strokeColor;
         ctx.beginPath();
         ctx.arc(stroke.points[0].x, stroke.points[0].y, ctx.lineWidth / 2, 0, Math.PI * 2);
         ctx.fill();
